@@ -235,7 +235,7 @@ let render t =
     let buf = String.make buflen ' ' in
     let write_direct c i j =
       if Char.equal c '\n' || i < line_lengths.(j) then
-        buf.[i + line_offsets.(j)] <- c
+        Bytes.set buf (i + line_offsets.(j)) c
     in
     let line_length j = line_lengths.(j) in
     render_abstract t ~write_direct ~line_length;

@@ -37,7 +37,7 @@ val height : t -> int
 val valign : valign -> t list -> t list
 val halign : halign -> t list -> t list
 
-(** empty blocks with either horizontal or vertical extent -- useful for specifing a
+(** empty blocks with either horizontal or vertical extent -- useful for specifying a
     minimum width or height in conjunction with valign or halign, respectively *)
 val hstrut : int -> t
 val vstrut : int -> t
