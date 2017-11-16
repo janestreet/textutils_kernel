@@ -232,14 +232,14 @@ let render t =
       for j = 1 to height - 1 do r.(j) <- line_offset j done;
       (r, line_offset height)
     in
-    let buf = String.make buflen ' ' in
+    let buf = Bytes.make buflen ' ' in
     let write_direct c i j =
       if Char.equal c '\n' || i < line_lengths.(j) then
         Bytes.set buf (i + line_offsets.(j)) c
     in
     let line_length j = line_lengths.(j) in
     render_abstract t ~write_direct ~line_length;
-    buf
+    Bytes.unsafe_to_string ~no_mutation_while_string_reachable:buf
   end
 
 (* header compression *)
