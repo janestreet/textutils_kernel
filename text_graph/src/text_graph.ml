@@ -56,9 +56,9 @@ let render ?(narrow=false) labels_and_values =
   if (List.is_empty labels_and_values
       || List.exists ~f:(fun (_, x) -> x < 0.0) labels_and_values)
   then failwiths
-    "Text_graph.render: Labels and values should be non-empty and values must be positive"
-    labels_and_values
-    [%sexp_of: (string * float) list];
+         "Text_graph.render: Labels and values should be non-empty and values must be positive"
+         labels_and_values
+         [%sexp_of: (string * float) list];
   let largest =
     match labels_and_values with
     | [] -> assert false (* checked above *)

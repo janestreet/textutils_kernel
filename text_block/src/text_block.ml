@@ -268,18 +268,18 @@ let compress_table_header ?(sep_width = 2) (`Cols cols) =
             if width header + sep_width <= width acc then stop () else
               loop rest
                 (hcat [
-                  vcat ~align:`Left [
-                    fill '|' ~width:1 ~height:(height x - height acc);
-                    acc;
-                  ];
-                  x;
-                ])
+                   vcat ~align:`Left [
+                     fill '|' ~width:1 ~height:(height x - height acc);
+                     acc;
+                   ];
+                   x;
+                 ])
         in
         loop stairs
           (vcat ~align:`Left [
-            text "|";
-            hstrut (max_width + sep_width);
-          ])
+             text "|";
+             hstrut (max_width + sep_width);
+           ])
       )
     end
   in

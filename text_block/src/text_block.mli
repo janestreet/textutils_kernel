@@ -54,18 +54,19 @@ val table
   -> [`Cols of (t list * halign) list] -> [`Rows of t list]
 
 (** compress table header according to column widths.
-  Input:  a list of columns of the form (title, values, column alignment).
-  Output: one header block and row sequence.
-  Raises: if the [values] lists are not the same length in each column.
-  Example:
+    Input:  a list of columns of the form (title, values, column alignment).
+    Output: one header block and row sequence.
+    Raises: if the [values] lists are not the same length in each column.
+    Example:
 
-                                               first name
-    age  first name  last name            age  |     last name
-    |    |           |            ==>     |    |     |
-    30   sue         smith                30   sue   smith
-    18   bill        rodriguez            18   bill  rodriguez
-    76   rick        jones                76   rick  jones
-*)
+    {v
+                                                 first name
+      age  first name  last name            age  |     last name
+      |    |           |            ==>     |    |     |
+      30   sue         smith                30   sue   smith
+      18   bill        rodriguez            18   bill  rodriguez
+      76   rick        jones                76   rick  jones
+    v} *)
 val compress_table_header
   :  ?sep_width:int
   -> [`Cols of (t * t list * halign) list] -> [`Header of t] * [`Rows of t list]
