@@ -9,11 +9,13 @@ include Invariant.S with type t := t
 val nil : t
 
 (** [fill] and [space] assume width and height are non-negative *)
-val fill  : char -> width:int -> height:int -> t
-val space :         width:int -> height:int -> t
+val fill : char -> width:int -> height:int -> t
+
+val space : width:int -> height:int -> t
 
 (** vertical and horizontal alignment specifications *)
 type valign = [`Top | `Bottom | `Center]
+
 type halign = [`Left | `Right | `Center]
 
 (** a basic block of text, split on newlines and horizontally aligned as specified.
@@ -22,24 +24,29 @@ type halign = [`Left | `Right | `Center]
     So long as no words are longer than [max_width], the resulting text block will be no
     wider than [max_width]
 *)
-val text  : ?align:halign -> ?max_width:int -> string -> t
+val text : ?align:halign -> ?max_width:int -> string -> t
+
 val textf : ?align:halign -> ?max_width:int -> ('r, unit, string, t) format4 -> 'r
 
 (** vertical and horizontal concatenation with alignment *)
 val vcat : ?align:halign -> ?sep:t -> t list -> t
+
 val hcat : ?align:valign -> ?sep:t -> t list -> t
 
 (** text block dimensions *)
-val width  : t -> int
+val width : t -> int
+
 val height : t -> int
 
 (** vertical and horizontal sequence alignment *)
 val valign : valign -> t list -> t list
+
 val halign : halign -> t list -> t list
 
 (** empty blocks with either horizontal or vertical extent -- useful for specifying a
     minimum width or height in conjunction with valign or halign, respectively *)
 val hstrut : int -> t
+
 val vstrut : int -> t
 
 (** wrap a block with an ANSI escape sequence.
@@ -49,9 +56,7 @@ val ansi_escape : ?prefix:string -> ?suffix:string -> t -> t
 (** render a block of text as a string *)
 val render : t -> string
 
-val table
-  :  ?sep_width:int
-  -> [`Cols of (t list * halign) list] -> [`Rows of t list]
+val table : ?sep_width:int -> [`Cols of (t list * halign) list] -> [`Rows of t list]
 
 (** compress table header according to column widths.
     Input:  a list of columns of the form (title, values, column alignment).
@@ -69,8 +74,8 @@ val table
     v} *)
 val compress_table_header
   :  ?sep_width:int
-  -> [`Cols of (t * t list * halign) list] -> [`Header of t] * [`Rows of t list]
-
+  -> [`Cols of (t * t list * halign) list]
+  -> [`Header of t] * [`Rows of t list]
 (* convenience definitions *)
 
 (** [vsep = vstrut 1] *)
