@@ -14,9 +14,15 @@ val fill : char -> width:int -> height:int -> t
 val space : width:int -> height:int -> t
 
 (** vertical and horizontal alignment specifications *)
-type valign = [`Top | `Bottom | `Center]
+type valign =
+  [ `Top
+  | `Bottom
+  | `Center ]
 
-type halign = [`Left | `Right | `Center]
+type halign =
+  [ `Left
+  | `Right
+  | `Center ]
 
 (** a basic block of text, split on newlines and horizontally aligned as specified.
 

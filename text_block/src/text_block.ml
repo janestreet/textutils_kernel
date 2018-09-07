@@ -13,9 +13,17 @@ let dims_invariant { width; height } =
   assert (height >= 0)
 ;;
 
-type valign = [`Top | `Bottom | `Center] [@@deriving sexp_of]
+type valign =
+  [ `Top
+  | `Bottom
+  | `Center ]
+[@@deriving sexp_of]
 
-type halign = [`Left | `Right | `Center] [@@deriving sexp_of]
+type halign =
+  [ `Left
+  | `Right
+  | `Center ]
+[@@deriving sexp_of]
 
 type t =
   | Text of string
@@ -27,12 +35,18 @@ type t =
 
 let height = function
   | Text _ -> 1
-  | Fill (_, d) | Hcat (_, _, d) | Vcat (_, _, d) | Ansi (_, _, _, d) -> d.height
+  | Fill (_, d)
+  | Hcat (_, _, d)
+  | Vcat (_, _, d)
+  | Ansi (_, _, _, d) -> d.height
 ;;
 
 let width = function
   | Text s -> String.length s
-  | Fill (_, d) | Hcat (_, _, d) | Vcat (_, _, d) | Ansi (_, _, _, d) -> d.width
+  | Fill (_, d)
+  | Hcat (_, _, d)
+  | Vcat (_, _, d)
+  | Ansi (_, _, _, d) -> d.width
 ;;
 
 let rec invariant t =
@@ -67,15 +81,10 @@ let fill_generic ch ~width ~height =
 ;;
 
 let fill ch ~width ~height = fill_generic ch ~width ~height
-
 let space ~width ~height = fill_generic ' ' ~width ~height
-
 let nil = space ~width:0 ~height:0
-
 let hstrut width = space ~width ~height:0
-
 let vstrut height = space ~height ~width:0
-
 let dims t = { width = width t; height = height t }
 
 let halve n =
@@ -121,7 +130,6 @@ let rec vpad t ~align delta =
 ;;
 
 let max_height ts = List.fold ts ~init:0 ~f:(fun acc t -> Int.max acc (height t))
-
 let max_width ts = List.fold ts ~init:0 ~f:(fun acc t -> Int.max acc (width t))
 
 let valign align ts =
@@ -134,7 +142,7 @@ let halign align ts =
   List.map ts ~f:(fun t -> hpad ~align t (w - width t))
 ;;
 
-let hcat ?(align=`Top) ?sep ts =
+let hcat ?(align = `Top) ?sep ts =
   let ts = Option.fold sep ~init:ts ~f:(fun ts sep -> List.intersperse ts ~sep) in
   let ts = valign align ts in
   match ts with
@@ -145,7 +153,7 @@ let hcat ?(align=`Top) ?sep ts =
       Hcat (acc, t, { height = height acc; width = width acc + width t }))
 ;;
 
-let vcat ?(align=`Left) ?sep ts =
+let vcat ?(align = `Left) ?sep ts =
   let ts = Option.fold sep ~init:ts ~f:(fun ts sep -> List.intersperse ts ~sep) in
   let ts = halign align ts in
   match ts with
@@ -180,7 +188,7 @@ let word_wrap str ~max_width =
   |> Fqueue.to_list
 ;;
 
-let text ?(align=`Left) ?max_width str =
+let text ?(align = `Left) ?max_width str =
   match max_width with
   | None -> text_no_wrap ~align str
   | Some max_width -> word_wrap str ~max_width |> text_of_lines ~align
@@ -274,7 +282,7 @@ let rec cons x = function
     if height x < height y then x :: y :: zs else cons (hcat ~align:`Bottom [ x; y ]) zs
 ;;
 
-let compress_table_header ?(sep_width=2) (`Cols cols) =
+let compress_table_header ?(sep_width = 2) (`Cols cols) =
   let cols =
     List.map cols ~f:(fun (header, data, align) ->
       header, Int.max 1 (max_width data), halign align data)
@@ -310,7 +318,7 @@ let compress_table_header ?(sep_width=2) (`Cols cols) =
   `Header header, `Rows rows
 ;;
 
-let table ?(sep_width=2) (`Cols cols) =
+let table ?(sep_width = 2) (`Cols cols) =
   let cols =
     List.map cols ~f:(fun (data, align) -> Int.max 1 (max_width data), halign align data)
   in
@@ -325,11 +333,7 @@ let table ?(sep_width=2) (`Cols cols) =
 (* convenience definitions *)
 
 let vsep = vstrut 1
-
 let hsep = hstrut 1
-
-let indent ?(n=2) t = hcat [ hstrut n; t ]
-
+let indent ?(n = 2) t = hcat [ hstrut n; t ]
 let sexp sexp_of_a a = sexp_of_a a |> Sexp.to_string_hum |> text
-
 let textf ?align ?max_width fmt = ksprintf (text ?align ?max_width) fmt
