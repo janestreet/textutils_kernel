@@ -1,9 +1,0 @@
-(library
- ((name text_block)
-  (public_name textutils_kernel.text_block)
-  (libraries (core_kernel))
-  (preprocess (pps (ppx_jane ppxlib.runner)))
-))
-
-
-(jbuild_version 1)
