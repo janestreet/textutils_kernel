@@ -17,12 +17,14 @@ val space : width:int -> height:int -> t
 type valign =
   [ `Top
   | `Bottom
-  | `Center ]
+  | `Center
+  ]
 
 type halign =
   [ `Left
   | `Right
-  | `Center ]
+  | `Center
+  ]
 
 (** a basic block of text, split on newlines and horizontally aligned as specified.
 
@@ -62,7 +64,7 @@ val ansi_escape : ?prefix:string -> ?suffix:string -> t -> t
 (** render a block of text as a string *)
 val render : t -> string
 
-val table : ?sep_width:int -> [`Cols of (t list * halign) list] -> [`Rows of t list]
+val table : ?sep_width:int -> [ `Cols of (t list * halign) list ] -> [ `Rows of t list ]
 
 (** compress table header according to column widths.
     Input:  a list of columns of the form (title, values, column alignment).
@@ -80,8 +82,9 @@ val table : ?sep_width:int -> [`Cols of (t list * halign) list] -> [`Rows of t l
     v} *)
 val compress_table_header
   :  ?sep_width:int
-  -> [`Cols of (t * t list * halign) list]
-  -> [`Header of t] * [`Rows of t list]
+  -> [ `Cols of (t * t list * halign) list ]
+  -> [ `Header of t ] * [ `Rows of t list ]
+
 (* convenience definitions *)
 
 (** [vsep = vstrut 1] *)

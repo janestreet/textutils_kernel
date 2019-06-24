@@ -16,13 +16,15 @@ let dims_invariant { width; height } =
 type valign =
   [ `Top
   | `Bottom
-  | `Center ]
+  | `Center
+  ]
 [@@deriving sexp_of]
 
 type halign =
   [ `Left
   | `Right
-  | `Center ]
+  | `Center
+  ]
 [@@deriving sexp_of]
 
 type t =
@@ -35,18 +37,12 @@ type t =
 
 let height = function
   | Text _ -> 1
-  | Fill (_, d)
-  | Hcat (_, _, d)
-  | Vcat (_, _, d)
-  | Ansi (_, _, _, d) -> d.height
+  | Fill (_, d) | Hcat (_, _, d) | Vcat (_, _, d) | Ansi (_, _, _, d) -> d.height
 ;;
 
 let width = function
   | Text s -> String.length s
-  | Fill (_, d)
-  | Hcat (_, _, d)
-  | Vcat (_, _, d)
-  | Ansi (_, _, _, d) -> d.width
+  | Fill (_, d) | Hcat (_, _, d) | Vcat (_, _, d) | Ansi (_, _, _, d) -> d.width
 ;;
 
 let rec invariant t =
