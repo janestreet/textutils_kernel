@@ -2,6 +2,7 @@ open! Core
 open! Async
 open! Import
 open Text_block
+module Expect_test_config = Core.Expect_test_config
 
 let yoyoma : t list = [ text "yo"; text "yo"; text "ma" ]
 
@@ -195,20 +196,20 @@ let%expect_test _ =
 ;;
 
 let%expect_test "word wrap" =
-  let width = 30 in
-  let t =
-    text
-      ~max_width:width
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor \
-       incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis \
-       nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. \
-       Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu \
-       fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in \
-       culpa qui officia deserunt mollit anim id est laborum."
+  let test ~width str =
+    let t = text ~max_width:width str in
+    let vline = fill '|' ~width:1 ~height:(height t) in
+    let hline = hcat [ text "+"; fill '-' ~width ~height:1; text "+" ] in
+    test (vcat [ hline; hcat [ vline; vcat [ hstrut width; t ]; vline ]; hline ])
   in
-  let vline = fill '|' ~width:1 ~height:(height t) in
-  let hline = hcat [ text "+"; fill '-' ~width ~height:1; text "+" ] in
-  test (vcat [ hline; hcat [ vline; vcat [ hstrut width; t ]; vline ]; hline ]);
+  test
+    ~width:30
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor \
+     incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud \
+     exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute \
+     irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla \
+     pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui \
+     officia deserunt mollit anim id est laborum.";
   [%expect
     {|
     +------------------------------+
@@ -230,6 +231,34 @@ let%expect_test "word wrap" =
     |officia deserunt mollit anim  |
     |id est laborum.               |
     +------------------------------+
+  |}];
+  test
+    ~width:33
+    "(Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor\n\
+    \ incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud\n\
+    \ exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute\n\
+    \ irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla\n\
+    \ pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui\n\
+    \ officia deserunt mollit anim id est laborum.)";
+  [%expect
+    {|
+    +---------------------------------+
+    |(Lorem ipsum dolor sit amet,     |
+    |consectetur adipiscing elit, sed |
+    |do eiusmod tempor incididunt ut  |
+    |labore et dolore magna aliqua. Ut|
+    |enim ad minim veniam, quis       |
+    |nostrud exercitation ullamco     |
+    |laboris nisi ut aliquip ex ea    |
+    |commodo consequat. Duis aute     |
+    |irure dolor in reprehenderit in  |
+    |voluptate velit esse cillum      |
+    |dolore eu fugiat nulla pariatur. |
+    |Excepteur sint occaecat cupidatat|
+    |non proident, sunt in culpa qui  |
+    |officia deserunt mollit anim id  |
+    |est laborum.)                    |
+    +---------------------------------+
   |}]
 ;;
 

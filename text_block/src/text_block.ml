@@ -173,6 +173,7 @@ let text_no_wrap ~align str =
 let word_wrap str ~max_width =
   String.split str ~on:' '
   |> List.concat_map ~f:(String.split ~on:'\n')
+  |> List.filter ~f:(Fn.non String.is_empty)
   |> List.fold ~init:(Fqueue.empty, Fqueue.empty, 0) ~f:(fun (lines, line, len) word ->
     let n = String.length word in
     let n' = len + 1 + n in
