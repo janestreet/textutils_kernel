@@ -46,7 +46,14 @@ val width : t -> int
 
 val height : t -> int
 
-(** vertical and horizontal sequence alignment *)
+(** vertical and horizontal sequence alignment.  Both [valign] and [halign] return a list
+    of the same length as the input, with the corresponding elements padded to the
+    appropriate alignment.
+
+    If you have a list of a statically known length, using [With_static_lengths.valign] or
+    [With_static_lengths.halign] below will let the type checker know that the length of
+    the returned list is equal to the length of the input list.
+*)
 val valign : valign -> t list -> t list
 
 val halign : halign -> t list -> t list
@@ -98,3 +105,26 @@ val indent : ?n:int -> t -> t
 
 (** [sexp sexp_of_a a = sexp_of_a a |> Sexp.to_string |> text] *)
 val sexp : ('a -> Sexp.t) -> 'a -> t
+
+(** Provide versions of halign and valign with the invariant about list length encoded
+    into the types.
+
+    You can write, for example:
+
+    {[
+
+      let [x; y] = Text_block.With_static_lengths.valign [x; y] in
+      ...
+    ]}
+
+*)
+module With_static_lengths : sig
+  module List : sig
+    type ('a, 'shape) t =
+      | [] : (_, [ `nil ]) t
+      | ( :: ) : 'a * ('a, 'shape) t -> ('a, [ `cons of 'shape ]) t
+  end
+
+  val halign : halign -> (t, 'shape) List.t -> (t, 'shape) List.t
+  val valign : valign -> (t, 'shape) List.t -> (t, 'shape) List.t
+end

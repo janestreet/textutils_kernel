@@ -334,3 +334,39 @@ let hsep = hstrut 1
 let indent ?(n = 2) t = hcat [ hstrut n; t ]
 let sexp sexp_of_a a = sexp_of_a a |> Sexp.to_string_hum |> text
 let textf ?align ?max_width fmt = ksprintf (text ?align ?max_width) fmt
+
+module List_with_static_lengths = struct
+  type ('a, 'shape) t =
+    | [] : (_, [ `nil ]) t
+    | ( :: ) : 'a * ('a, 'shape) t -> ('a, [ `cons of 'shape ]) t
+
+  let rec to_list : type a shape. (a, shape) t -> a list = function
+    | [] -> []
+    | hd :: tl -> hd :: to_list tl
+  ;;
+
+  let rec of_same_length_list_exn : type a shape. (a, shape) t -> a list -> (a, shape) t =
+    fun t list ->
+      match t with
+      | [] ->
+        if not (List.is_empty list) then failwith "list is too long";
+        []
+      | _ :: t_tl ->
+        (match list with
+         | [] -> failwith "list is too short"
+         | list_hd :: list_tl -> list_hd :: of_same_length_list_exn t_tl list_tl)
+  ;;
+end
+
+module With_static_lengths = struct
+  let make align alignment static_length_list =
+    List_with_static_lengths.of_same_length_list_exn
+      static_length_list
+      (align alignment (List_with_static_lengths.to_list static_length_list))
+  ;;
+
+  let halign h = make halign h
+  let valign v = make valign v
+
+  module List = List_with_static_lengths
+end

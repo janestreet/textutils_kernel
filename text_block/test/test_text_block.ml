@@ -30,10 +30,8 @@ let example =
       ; text "Chief Procurement Officer"
       ]
   in
-  let return_address, salutation =
-    match halign `Left [ return_address; salutation ] with
-    | [ x; y ] -> x, y
-    | _ -> assert false
+  let [ return_address; salutation ] =
+    With_static_lengths.halign `Left [ return_address; salutation ]
   in
   vcat
     ~align:`Right
