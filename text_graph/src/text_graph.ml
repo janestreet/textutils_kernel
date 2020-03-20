@@ -56,7 +56,7 @@ let%test _ = line ~narrow:false ~label:"bar2" ~value:499.6   ~norm:0.004 = "    
 let render ?(narrow=false) labels_and_values =
   if (List.is_empty labels_and_values
       || List.exists ~f:(fun (_, x) -> x < 0.0) labels_and_values)
-  then failwiths
+  then failwiths ~here:[%here]
          "Text_graph.render: Labels and values should be non-empty and values must be positive"
          labels_and_values
          [%sexp_of: (string * float) list];
