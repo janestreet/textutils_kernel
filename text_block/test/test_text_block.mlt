@@ -2,7 +2,6 @@
    [Text_block.With_static_lengths]. *)
 
 open! Core
-
 open Text_block
 
 let () =
