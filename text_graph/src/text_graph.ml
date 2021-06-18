@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 open Poly
 
 let num_char n = Char.of_int_exn (Char.to_int '0' + n)

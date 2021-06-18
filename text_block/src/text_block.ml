@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 open Int.Replace_polymorphic_compare
 
 type dims =
