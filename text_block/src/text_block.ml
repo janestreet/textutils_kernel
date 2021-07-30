@@ -28,8 +28,8 @@ type halign =
 [@@deriving sexp_of]
 
 type t =
-  | Text of string
-  | Fill of char * dims
+  | Text of Utf8_text.t
+  | Fill of Uchar.t * dims
   | Hcat of t * t * dims
   | Vcat of t * t * dims
   | Ansi of string option * t * string option * dims
@@ -41,13 +41,15 @@ let height = function
 ;;
 
 let width = function
-  | Text s -> String.length s
+  | Text s -> Utf8_text.width s
   | Fill (_, d) | Hcat (_, _, d) | Vcat (_, _, d) | Ansi (_, _, _, d) -> d.width
 ;;
 
+let uchar_newline = Uchar.of_char '\n'
+
 let rec invariant t =
   match t with
-  | Text s -> assert (not (String.mem s '\n'))
+  | Text s -> assert (not (Utf8_text.mem s uchar_newline))
   | Fill (_, dims) -> dims_invariant dims
   | Hcat (t1, t2, dims) ->
     dims_invariant dims;
@@ -76,8 +78,9 @@ let fill_generic ch ~width ~height =
   Fill (ch, { width; height })
 ;;
 
-let fill ch ~width ~height = fill_generic ch ~width ~height
-let space ~width ~height = fill_generic ' ' ~width ~height
+let fill_uchar ch ~width ~height = fill_generic ch ~width ~height
+let fill ch ~width ~height = fill_generic (Uchar.of_char ch) ~width ~height
+let space ~width ~height = fill ' ' ~width ~height
 let nil = space ~width:0 ~height:0
 let hstrut width = space ~width ~height:0
 let vstrut height = space ~height ~width:0
@@ -91,7 +94,7 @@ let halve n =
 
 let ansi_escape ?prefix ?suffix t = Ansi (prefix, t, suffix, dims t)
 
-let rec hpad t ~align delta =
+let rec hpad t ~(align : halign) delta =
   assert (delta >= 0);
   if delta = 0
   then t
@@ -164,50 +167,53 @@ let text_of_lines lines ~align =
   lines |> List.map ~f:(fun line -> Text line) |> vcat ~align
 ;;
 
-let text_no_wrap ~align str =
-  if String.mem str '\n'
-  then String.split ~on:'\n' str |> text_of_lines ~align
-  else Text str
+let text_no_wrap ~align txt =
+  if Utf8_text.mem txt uchar_newline
+  then Utf8_text.split ~on:'\n' txt |> text_of_lines ~align
+  else Text txt
 ;;
 
-let word_wrap str ~max_width =
-  String.split str ~on:' '
-  |> List.concat_map ~f:(String.split ~on:'\n')
-  |> List.filter ~f:(Fn.non String.is_empty)
+let utf8_space = Utf8_text.of_string " "
+
+let word_wrap txt ~max_width =
+  Utf8_text.split txt ~on:' '
+  |> List.concat_map ~f:(Utf8_text.split ~on:'\n')
+  |> List.filter ~f:(Fn.non Utf8_text.is_empty)
   |> List.fold ~init:(Fqueue.empty, Fqueue.empty, 0) ~f:(fun (lines, line, len) word ->
-    let n = String.length word in
+    let n = Utf8_text.width word in
     let n' = len + 1 + n in
     if n' > max_width
     then Fqueue.enqueue lines line, Fqueue.singleton word, n
     else lines, Fqueue.enqueue line word, n')
   |> (fun (lines, line, _) -> Fqueue.enqueue lines line)
-  |> Fqueue.map ~f:(fun line -> Fqueue.to_list line |> String.concat ~sep:" ")
+  |> Fqueue.map ~f:(fun line -> Fqueue.to_list line |> Utf8_text.concat ~sep:utf8_space)
   |> Fqueue.to_list
 ;;
 
 let text ?(align = `Left) ?max_width str =
+  let txt = Utf8_text.of_string str in
   match max_width with
-  | None -> text_no_wrap ~align str
-  | Some max_width -> word_wrap str ~max_width |> text_of_lines ~align
+  | None -> text_no_wrap ~align txt
+  | Some max_width -> word_wrap txt ~max_width |> text_of_lines ~align
 ;;
 
 (* an abstract renderer, instantiated once to compute line lengths and then again to
-   actually produce a string. *)
+   actually produce a string.
+
+   [line_length] is a number of bytes rather than a number of visible characters.  The two
+   may differ in case of proper unicode [Text] or [Ansi] escape sequences. *)
 let render_abstract t ~write_direct ~line_length =
   for j = 0 to height t - 1 do
-    write_direct '\n' (line_length j) j
+    write_direct uchar_newline (line_length j) j ~num_bytes:1
   done;
   let next_i = Array.init (height t) ~f:(fun _ -> 0) in
   let add_char c j =
     let i = next_i.(j) in
-    next_i.(j) <- i + 1;
-    write_direct c i j
+    let num_bytes = Uchar.utf8_byte_length c in
+    next_i.(j) <- i + num_bytes;
+    write_direct c i j ~num_bytes
   in
-  let write_string s j =
-    for i = 0 to String.length s - 1 do
-      add_char s.[i] j
-    done
-  in
+  let write_string txt j = Utf8_text.iter txt ~f:(fun uchar -> add_char uchar j) in
   let rec aux t j_offset =
     match t with
     | Text s -> write_string s j_offset
@@ -230,21 +236,37 @@ let render_abstract t ~write_direct ~line_length =
             write_string s (j + j_offset)
           done)
       in
-      vcopy prefix;
+      vcopy (Option.map ~f:Utf8_text.of_string prefix);
       aux t j_offset;
-      vcopy suffix
+      vcopy (Option.map ~f:Utf8_text.of_string suffix)
   in
   aux t 0
 ;;
 
 let line_lengths t =
-  let r = Array.create ~len:(height t) 0 in
-  let write_direct c i j =
-    if not (Char.is_whitespace c) then r.(j) <- Int.max r.(j) (i + 1)
+  let height = height t in
+  let r = Array.create ~len:height 0 in
+  let write_direct c i j ~num_bytes =
+    let is_whitespace =
+      match Uchar.to_char c with
+      | None -> false
+      | Some c -> Char.is_whitespace c
+    in
+    if not is_whitespace then r.(j) <- Int.max r.(j) (i + num_bytes)
   in
   let line_length _ = -1 (* doesn't matter *) in
   render_abstract t ~write_direct ~line_length;
   r
+;;
+
+let poke_uchar : bytes -> Uchar.t -> pos:int -> unit =
+  let buffer = Caml.Buffer.create 4 in
+  fun bytes c ~pos ->
+    Uutf.Buffer.add_utf_8 buffer c;
+    for k = 0 to Buffer.length buffer - 1 do
+      Bytes.set bytes (k + pos) (Buffer.nth buffer k)
+    done;
+    Buffer.clear buffer
 ;;
 
 let render t =
@@ -262,9 +284,9 @@ let render t =
       r, line_offset height
     in
     let buf = Bytes.make buflen ' ' in
-    let write_direct c i j =
-      if Char.equal c '\n' || i < line_lengths.(j)
-      then Bytes.set buf (i + line_offsets.(j)) c
+    let write_direct c i j ~num_bytes:_ =
+      if Uchar.equal c uchar_newline || i < line_lengths.(j)
+      then poke_uchar buf c ~pos:(i + line_offsets.(j))
     in
     let line_length j = line_lengths.(j) in
     render_abstract t ~write_direct ~line_length;
@@ -326,6 +348,241 @@ let table ?(sep_width = 2) (`Cols cols) =
   in
   `Rows rows
 ;;
+
+(* Produces one of a family of unicode characters that look like
+
+   ,--U--.
+   |  U  |     with U filled in if [up] is passed,
+   |  U  |          D filled in if [down] is passed,
+   LLLoRRR          L filled in if [left] is passed,
+   |  D  |          R filled in if [right] is passed, and
+   |  D  |          o filled in if any of the above are passed.
+   `--D--'
+*)
+let box_char ?up ?down ?left ?right () =
+  let boolify = function
+    | None -> false
+    | Some () -> true
+  in
+  let up = boolify up in
+  let down = boolify down in
+  let left = boolify left in
+  let right = boolify right in
+  match up, down, left, right with
+  | false, false, true, true -> Uchar.of_scalar_exn 0x2500
+  | true, true, false, false -> Uchar.of_scalar_exn 0x2502
+  | false, true, false, true -> Uchar.of_scalar_exn 0x250c
+  | false, true, true, false -> Uchar.of_scalar_exn 0x2510
+  | true, false, false, true -> Uchar.of_scalar_exn 0x2514
+  | true, false, true, false -> Uchar.of_scalar_exn 0x2518
+  | true, true, false, true -> Uchar.of_scalar_exn 0x251c
+  | true, true, true, false -> Uchar.of_scalar_exn 0x2524
+  | false, true, true, true -> Uchar.of_scalar_exn 0x252c
+  | true, false, true, true -> Uchar.of_scalar_exn 0x2534
+  | true, true, true, true -> Uchar.of_scalar_exn 0x253c
+  | false, false, true, false -> Uchar.of_scalar_exn 0x2574
+  | true, false, false, false -> Uchar.of_scalar_exn 0x2575
+  | false, false, false, true -> Uchar.of_scalar_exn 0x2576
+  | false, true, false, false -> Uchar.of_scalar_exn 0x2577
+  | false, false, false, false -> Uchar.of_char ' '
+;;
+
+module Boxed = struct
+  (* The representation of a boxed text block is a generalization of [box_char] where
+     there may be more than one place where it "pokes out" on each side.  The four
+     directional int lists give all such positions.
+
+     It isn't until we call [wrap] at the very end that the final border goes around the
+     whole thing.
+  *)
+  type nonrec t =
+    { contents : t (* what goes inside the box *)
+    ; ups : int list (* list of column positions: 0-indexed *)
+    ; downs : int list (* list of column positions: 0-indexed *)
+    ; lefts : int list (* list of row positions: 0-indexed *)
+    ; rights : int list (* list of row positions: 0-indexed *)
+    }
+  [@@deriving sexp_of]
+
+  let cell ?(hpadding = 1) ?(vpadding = 0) contents =
+    (* add any horizontal padding *)
+    let contents =
+      if hpadding > 0
+      then vcat ~align:`Center [ contents; hstrut (width contents + (2 * hpadding)) ]
+      else contents
+    in
+    (* add any vertical padding *)
+    let contents =
+      if vpadding > 0
+      then hcat ~align:`Center [ contents; vstrut (height contents + (2 * vpadding)) ]
+      else contents
+    in
+    { contents; ups = []; downs = []; lefts = []; rights = [] }
+  ;;
+
+  let box_char ?(height = 1) ?(width = 1) ?up ?down ?left ?right () =
+    fill_uchar ~height ~width (box_char ?up ?down ?left ?right ())
+  ;;
+
+  let ulcorner = box_char () ~down:() ~right:()
+  let urcorner = box_char () ~down:() ~left:()
+  let llcorner = box_char () ~up:() ~right:()
+  let lrcorner = box_char () ~up:() ~left:()
+
+  let hline ?(ups = []) ?(downs = []) ~width () =
+    let ups = Int.Set.of_list ups in
+    let downs = Int.Set.of_list downs in
+    hcat
+      (List.init width ~f:(fun i ->
+         box_char
+           ()
+           ~left:()
+           ~right:()
+           ?up:(Option.some_if (Set.mem ups i) ())
+           ?down:(Option.some_if (Set.mem downs i) ())))
+  ;;
+
+  let vline ?(lefts = []) ?(rights = []) ~height () =
+    let lefts = Int.Set.of_list lefts in
+    let rights = Int.Set.of_list rights in
+    vcat
+      (List.init height ~f:(fun i ->
+         box_char
+           ()
+           ~up:()
+           ~down:()
+           ?left:(Option.some_if (Set.mem lefts i) ())
+           ?right:(Option.some_if (Set.mem rights i) ())))
+  ;;
+
+  (* put a border around the whole thing *)
+  let wrap { contents; ups; downs; lefts; rights } =
+    let width = width contents in
+    let height = height contents in
+    (* all directions are opposite from the border's perspective *)
+    vcat
+      [ hcat [ ulcorner; hline ~downs:ups ~width (); urcorner ]
+      ; hcat [ vline ~rights:lefts ~height (); contents; vline ~lefts:rights ~height () ]
+      ; hcat [ llcorner; hline ~ups:downs ~width (); lrcorner ]
+      ]
+  ;;
+
+  (* a helper common to vcat/hcat below to concatenate lists of "poke out" positions along
+     the same dimension as that of the concatenation. *)
+  let concat_frills project width_or_height ~ts ~n =
+    List.init ((2 * n) - 1) ~f:Fn.id
+    |> List.fold ~init:(0, []) ~f:(fun (sum, vals) i ->
+      let sum, new_vals =
+        if i % 2 = 0
+        then (
+          let t = ts.(i / 2) in
+          let vals = List.map (project t) ~f:(fun j -> j + sum) in
+          sum + width_or_height t.contents, vals)
+        else (
+          let vals = [ sum ] in
+          sum + 1, vals)
+      in
+      sum, List.rev_append new_vals vals)
+    |> snd
+    |> List.rev
+  ;;
+
+  let vcat ?(align = `Left) ts =
+    if List.is_empty ts
+    then cell nil
+    else (
+      let max_width =
+        List.fold ts ~init:0 ~f:(fun acc t -> Int.max acc (width t.contents))
+      in
+      let ts =
+        List.map ts ~f:(fun t ->
+          let contents = t.contents in
+          let padding = max_width - width contents in
+          let contents = hpad ~align contents padding in
+          let shift =
+            let offset =
+              match align with
+              | `Left -> 0
+              | `Center -> fst (halve padding)
+              | `Right -> padding
+            in
+            List.map ~f:(fun n -> offset + n)
+          in
+          { t with contents; ups = shift t.ups; downs = shift t.downs })
+      in
+      let ts = Array.of_list ts in
+      let n = Array.length ts in
+      let contents =
+        vcat
+          (List.init
+             ((2 * n) - 1)
+             ~f:(fun i ->
+               if i % 2 = 0
+               then ts.(i / 2).contents
+               else (
+                 let prev_t = ts.((i - 1) / 2) in
+                 let next_t = ts.((i + 1) / 2) in
+                 (* directions flipped for the same reason as in [wrap] *)
+                 hline ~ups:prev_t.downs ~downs:next_t.ups ~width:max_width ())))
+      in
+      let lefts_or_rights project = concat_frills project height ~ts ~n in
+      { contents
+      ; ups = ts.(0).ups
+      ; downs = ts.(n - 1).downs
+      ; lefts = lefts_or_rights (fun t -> t.lefts)
+      ; rights = lefts_or_rights (fun t -> t.rights)
+      })
+  ;;
+
+  let hcat ?(align = `Top) ts =
+    if List.is_empty ts
+    then cell nil
+    else (
+      let max_height =
+        List.fold ts ~init:0 ~f:(fun acc t -> Int.max acc (height t.contents))
+      in
+      let ts =
+        List.map ts ~f:(fun t ->
+          let contents = t.contents in
+          let padding = max_height - height contents in
+          let contents = vpad ~align contents padding in
+          let shift =
+            let offset =
+              match align with
+              | `Top -> 0
+              | `Center -> fst (halve padding)
+              | `Bottom -> padding
+            in
+            List.map ~f:(fun n -> offset + n)
+          in
+          { t with contents; lefts = shift t.lefts; rights = shift t.rights })
+      in
+      let ts = Array.of_list ts in
+      let n = Array.length ts in
+      let contents =
+        hcat
+          (List.init
+             ((2 * n) - 1)
+             ~f:(fun i ->
+               if i % 2 = 0
+               then ts.(i / 2).contents
+               else (
+                 let prev_t = ts.((i - 1) / 2) in
+                 let next_t = ts.((i + 1) / 2) in
+                 (* directions flipped for the same reason as in [wrap] *)
+                 vline ~lefts:prev_t.rights ~rights:next_t.lefts ~height:max_height ())))
+      in
+      let ups_or_downs project = concat_frills project width ~ts ~n in
+      { contents
+      ; lefts = ts.(0).lefts
+      ; rights = ts.(n - 1).rights
+      ; ups = ups_or_downs (fun t -> t.ups)
+      ; downs = ups_or_downs (fun t -> t.downs)
+      })
+  ;;
+end
+
+let boxed = Boxed.wrap
 
 (* convenience definitions *)
 

@@ -288,3 +288,249 @@ let%expect_test _ =
     [33mma[39m
   |}]
 ;;
+
+let%expect_test "unicode" =
+  test
+    (let contents = vcat [ text "✓ yes"; text "x no" ] in
+     let height = height contents in
+     hcat
+       [ fill '|' ~height ~width:1
+       ; space ~height ~width:1
+       ; contents
+       ; space ~height ~width:1
+       ; fill '|' ~height ~width:1
+       ]);
+  [%expect {|
+    | ✓ yes |
+    | x no  | |}]
+;;
+
+let%expect_test "fill_uchar" =
+  test (fill_uchar (Uchar.of_scalar_exn 0x1f600) ~width:2 ~height:4);
+  [%expect {|
+    😀😀
+    😀😀
+    😀😀
+    😀😀 |}]
+;;
+
+module Test_boxed = struct
+  let dump x = boxed x |> render |> print_string
+  let a = text "A"
+  let b = text "B"
+  let c = text "C"
+  let d = text "D"
+  let e = text "E"
+
+  let%expect_test "Basics" =
+    dump Boxed.(hcat [ cell a; cell b ]);
+    [%expect
+      {|
+    ┌───┬───┐
+    │ A │ B │
+    └───┴───┘
+  |}];
+    dump Boxed.(hcat ~align:`Center [ vcat [ cell a; cell b ]; cell c ]);
+    dump
+      Boxed.(
+        hcat ~align:`Center [ vcat [ cell a; cell b ]; cell c; vcat [ cell d; cell e ] ]);
+    dump Boxed.(hcat ~align:`Center [ vcat [ cell a; cell b ]; vcat [ cell d; cell e ] ]);
+    [%expect
+      {|
+    ┌───┬───┐
+    │ A │   │
+    ├───┤ C │
+    │ B │   │
+    └───┴───┘
+    ┌───┬───┬───┐
+    │ A │   │ D │
+    ├───┤ C ├───┤
+    │ B │   │ E │
+    └───┴───┴───┘
+    ┌───┬───┐
+    │ A │ D │
+    ├───┼───┤
+    │ B │ E │
+    └───┴───┘
+  |}];
+    dump Boxed.(vcat ~align:`Center [ hcat [ cell a; cell b ]; cell c ]);
+    dump
+      Boxed.(
+        vcat ~align:`Center [ hcat [ cell a; cell b ]; cell c; hcat [ cell d; cell e ] ]);
+    dump Boxed.(vcat ~align:`Center [ hcat [ cell a; cell b ]; hcat [ cell d; cell e ] ]);
+    [%expect
+      {|
+    ┌───┬───┐
+    │ A │ B │
+    ├───┴───┤
+    │   C   │
+    └───────┘
+    ┌───┬───┐
+    │ A │ B │
+    ├───┴───┤
+    │   C   │
+    ├───┬───┤
+    │ D │ E │
+    └───┴───┘
+    ┌───┬───┐
+    │ A │ B │
+    ├───┼───┤
+    │ D │ E │
+    └───┴───┘
+  |}]
+  ;;
+
+  let%expect_test "frills are correctly offset for padding" =
+    dump
+      Boxed.(
+        hcat
+          ~align:`Center
+          [ vcat
+              ~align:`Center
+              [ hcat [ cell a; cell b ]; cell c; hcat [ cell d; cell e ] ]
+          ; vcat ~align:`Center [ cell (text "Top right"); cell (text "Bottom right") ]
+          ]);
+    [%expect
+      {|
+    ┌───┬───┬──────────────┐
+    │ A │ B │              │
+    ├───┴───┤   Top right  │
+    │   C   ├──────────────┤
+    ├───┬───┤ Bottom right │
+    │ D │ E │              │
+    └───┴───┴──────────────┘ |}]
+  ;;
+
+  let%expect_test "align" =
+    let addr1 = vcat [ text "2½ Devonshire Square"; text "London"; text "EC2M 4UJ" ] in
+    let addr2 = vcat [ text "Windsor Castle"; text "Windsor"; text "SL4 1NJ" ] in
+    let addr3 =
+      vcat
+        [ text "The White House"
+        ; text "1600 Pennsylvania Av NW"
+        ; text "Washington, DC"
+        ; text "20500"
+        ]
+    in
+    let test ~dir =
+      vcat
+        Boxed.(
+          let cat1, cat2, cat3 =
+            match dir with
+            | `Horizontal -> hcat ~align:`Top, hcat ~align:`Center, hcat ~align:`Bottom
+            | `Vertical -> vcat ~align:`Left, vcat ~align:`Center, vcat ~align:`Right
+          in
+          [ boxed (cat1 [ cell (text "A Streeter"); cell addr1 ])
+          ; boxed (cat2 [ cell (text "Henry VIII"); cell addr2 ])
+          ; boxed (cat3 [ cell (text "A Lincoln"); cell addr3 ])
+          ])
+      |> render
+      |> print_string
+    in
+    test ~dir:`Horizontal;
+    [%expect
+      {|
+    ┌────────────┬──────────────────────┐
+    │ A Streeter │ 2½ Devonshire Square │
+    │            │ London               │
+    │            │ EC2M 4UJ             │
+    └────────────┴──────────────────────┘
+    ┌────────────┬────────────────┐
+    │            │ Windsor Castle │
+    │ Henry VIII │ Windsor        │
+    │            │ SL4 1NJ        │
+    └────────────┴────────────────┘
+    ┌───────────┬─────────────────────────┐
+    │           │ The White House         │
+    │           │ 1600 Pennsylvania Av NW │
+    │           │ Washington, DC          │
+    │ A Lincoln │ 20500                   │
+    └───────────┴─────────────────────────┘ |}];
+    test ~dir:`Vertical;
+    [%expect
+      {|
+      ┌──────────────────────┐
+      │ A Streeter           │
+      ├──────────────────────┤
+      │ 2½ Devonshire Square │
+      │ London               │
+      │ EC2M 4UJ             │
+      └──────────────────────┘
+      ┌────────────────┐
+      │   Henry VIII   │
+      ├────────────────┤
+      │ Windsor Castle │
+      │ Windsor        │
+      │ SL4 1NJ        │
+      └────────────────┘
+      ┌─────────────────────────┐
+      │               A Lincoln │
+      ├─────────────────────────┤
+      │ The White House         │
+      │ 1600 Pennsylvania Av NW │
+      │ Washington, DC          │
+      │ 20500                   │
+      └─────────────────────────┘ |}]
+  ;;
+
+  let%expect_test "fib" =
+    let square n =
+      fill ' ' ~width:((4 * n) - 1) ~height:((2 * n) - 1) |> Boxed.cell ~hpadding:0
+    in
+    let rec nested_boxes ?(horizontal = true) = function
+      | [] -> square 1
+      | hd :: tl ->
+        let cat =
+          if horizontal
+          then fun a b -> Boxed.hcat [ a; b ]
+          else fun a b -> Boxed.vcat [ a; b ]
+        in
+        cat (square hd) (nested_boxes ~horizontal:(not horizontal) tl)
+    in
+    dump (nested_boxes [ 2; 1 ]);
+    [%expect
+      {|
+    ┌───────┬───┐
+    │       │   │
+    │       ├───┤
+    │       │   │
+    └───────┴───┘
+  |}];
+    dump (nested_boxes [ 5; 3; 2; 1 ]);
+    [%expect
+      {|
+    ┌───────────────────┬───────────┐
+    │                   │           │
+    │                   │           │
+    │                   │           │
+    │                   │           │
+    │                   │           │
+    │                   ├───────┬───┤
+    │                   │       │   │
+    │                   │       ├───┤
+    │                   │       │   │
+    └───────────────────┴───────┴───┘
+  |}];
+    dump (nested_boxes [ 8; 5; 3; 2; 1 ]);
+    [%expect
+      {|
+    ┌───────────────────────────────┬───────────────────┐
+    │                               │                   │
+    │                               │                   │
+    │                               │                   │
+    │                               │                   │
+    │                               │                   │
+    │                               │                   │
+    │                               │                   │
+    │                               │                   │
+    │                               │                   │
+    │                               ├───────────┬───────┤
+    │                               │           │       │
+    │                               │           │       │
+    │                               │           │       │
+    │                               │           ├───┬───┤
+    │                               │           │   │   │
+    └───────────────────────────────┴───────────┴───┴───┘
+  |}]
+  ;;
+end

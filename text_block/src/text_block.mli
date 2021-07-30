@@ -13,6 +13,9 @@ val fill : char -> width:int -> height:int -> t
 
 val space : width:int -> height:int -> t
 
+(** Fill a space with a Unicode character *)
+val fill_uchar : Uchar.t -> width:int -> height:int -> t
+
 (** vertical and horizontal alignment specifications *)
 type valign =
   [ `Top
@@ -91,6 +94,59 @@ val compress_table_header
   :  ?sep_width:int
   -> [ `Cols of (t * t list * halign) list ]
   -> [ `Header of t ] * [ `Rows of t list ]
+
+(** Combinators for building up cell structures separated by box characters: e.g.
+
+    {[
+      let a = text "A" in
+      let b = text "B" in
+      let c = text "C" in
+      boxed Boxed.(hcat [vcat [cell a; cell b]; c])
+    ]}
+
+    and
+
+    {[
+      let a = text "A" in
+      let b = text "B" in
+      let c = text "C" in
+      boxed Boxed.(hcat [
+        vcat [cell a; cell b];
+        c;
+        vcat [cell b; cell a]
+      ])
+    ]}
+
+    produce
+
+    ┌───┬───┐       ┌───┬───┬───┐
+    │ A │   │       │ A │   │ B │
+    ├───┤ C │  and  ├───┤ C ├───┤
+    │ B │   │       │ B │   │ A │
+    └───┴───┘       └───┴───┴───┘
+
+    respectively.
+*)
+module Boxed : sig
+  type outer_t := t
+  type t [@@deriving sexp_of]
+
+  (** An outlined table cell, possibly with extra space (padding) on the sides.
+
+      [hpadding] defaults to 1.
+      [vpadding] defaults to 0.
+  *)
+  val cell : ?hpadding:int -> ?vpadding:int -> outer_t -> t
+
+  (** Vertical concatenation with inserts horizontal separator lines. *)
+  val vcat : ?align:halign -> t list -> t
+
+  (** horizontal concatenation with inserts vertical separator lines. *)
+  val hcat : ?align:valign -> t list -> t
+end
+
+(** See comment for [Boxed] *)
+val boxed : Boxed.t -> t
 
 (* convenience definitions *)
 
