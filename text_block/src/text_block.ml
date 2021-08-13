@@ -94,38 +94,62 @@ let halve n =
 
 let ansi_escape ?prefix ?suffix t = Ansi (prefix, t, suffix, dims t)
 
-let rec hpad t ~(align : halign) delta =
-  assert (delta >= 0);
+let hpad_split ~align delta =
+  let value pad = if pad = 0 then None else Some pad in
+  let k above below = value above, value below in
   if delta = 0
-  then t
+  then k 0 0
   else (
-    let height = height t in
-    let pad = space ~height ~width:delta in
     match align with
-    | `Left -> Hcat (t, pad, { height; width = width t + delta })
-    | `Right -> Hcat (pad, t, { height; width = width t + delta })
+    | `Left -> k 0 delta
+    | `Right -> k delta 0
     | `Center ->
-      let delta1, delta2 = halve delta in
-      let t = hpad t ~align:`Left delta1 in
-      let t = hpad t ~align:`Right delta2 in
-      t)
+      let a, b = halve delta in
+      k a b)
 ;;
 
-let rec vpad t ~align delta =
+let hpad t ~(align : halign) delta =
   assert (delta >= 0);
+  let pad_left, pad_right = hpad_split ~align delta in
+  let height = height t in
+  let t =
+    Option.fold pad_left ~init:t ~f:(fun t delta ->
+      Hcat (space ~height ~width:delta, t, { height; width = width t + delta }))
+  in
+  let t =
+    Option.fold pad_right ~init:t ~f:(fun t delta ->
+      Hcat (t, space ~height ~width:delta, { height; width = width t + delta }))
+  in
+  t
+;;
+
+let vpad_split ~align delta =
+  let value pad = if pad = 0 then None else Some pad in
+  let k above below = value above, value below in
   if delta = 0
-  then t
+  then k 0 0
   else (
-    let width = width t in
-    let pad = space ~width ~height:delta in
     match align with
-    | `Top -> Vcat (t, pad, { width; height = height t + delta })
-    | `Bottom -> Vcat (pad, t, { width; height = height t + delta })
+    | `Top -> k 0 delta
+    | `Bottom -> k delta 0
     | `Center ->
-      let delta1, delta2 = halve delta in
-      let t = vpad t ~align:`Top delta1 in
-      let t = vpad t ~align:`Bottom delta2 in
-      t)
+      let a, b = halve delta in
+      k a b)
+;;
+
+let vpad t ~align delta =
+  assert (delta >= 0);
+  let pad_above, pad_below = vpad_split ~align delta in
+  let width = width t in
+  let t =
+    Option.fold pad_above ~init:t ~f:(fun t delta ->
+      Vcat (space ~width ~height:delta, t, { width; height = height t + delta }))
+  in
+  let t =
+    Option.fold pad_below ~init:t ~f:(fun t delta ->
+      Vcat (t, space ~width ~height:delta, { width; height = height t + delta }))
+  in
+  t
 ;;
 
 let max_height ts = List.fold ts ~init:0 ~f:(fun acc t -> Int.max acc (height t))
@@ -487,6 +511,39 @@ module Boxed = struct
     |> List.rev
   ;;
 
+  let hpad t ~align delta =
+    let pad_left, pad_right = hpad_split ~align delta in
+    let acc = t.contents in
+    let height = height acc in
+    let rec padding i ~frills ~width =
+      let prepend_space ~height acc =
+        if height = 0 then acc else space ~width ~height :: acc
+      in
+      match frills with
+      | [] -> prepend_space ~height:(height - i) []
+      | hd :: tl ->
+        prepend_space
+          ~height:(hd - i)
+          (box_char ~width ~left:() ~right:() () :: padding (hd + 1) ~frills:tl ~width)
+    in
+    let padding ~frills ~width = vcat (padding 0 ~frills ~width) in
+    let acc =
+      Option.fold pad_left ~init:acc ~f:(fun acc delta ->
+        Hcat
+          ( padding ~frills:t.lefts ~width:delta
+          , acc
+          , { height; width = width acc + delta } ))
+    in
+    let acc =
+      Option.fold pad_right ~init:acc ~f:(fun acc delta ->
+        Hcat
+          ( acc
+          , padding ~frills:t.rights ~width:delta
+          , { height; width = width acc + delta } ))
+    in
+    acc
+  ;;
+
   let vcat ?(align = `Left) ts =
     if List.is_empty ts
     then cell nil
@@ -498,7 +555,7 @@ module Boxed = struct
         List.map ts ~f:(fun t ->
           let contents = t.contents in
           let padding = max_width - width contents in
-          let contents = hpad ~align contents padding in
+          let contents = hpad ~align t padding in
           let shift =
             let offset =
               match align with
@@ -534,6 +591,39 @@ module Boxed = struct
       })
   ;;
 
+  let vpad t ~align delta =
+    let pad_above, pad_below = vpad_split ~align delta in
+    let acc = t.contents in
+    let width = width acc in
+    let rec padding i ~frills ~height =
+      let prepend_space ~width acc =
+        if width = 0 then acc else space ~width ~height :: acc
+      in
+      match frills with
+      | [] -> prepend_space ~width:(width - i) []
+      | hd :: tl ->
+        prepend_space
+          ~width:(hd - i)
+          (box_char ~height ~up:() ~down:() () :: padding (hd + 1) ~frills:tl ~height)
+    in
+    let padding ~frills ~height = hcat (padding 0 ~frills ~height) in
+    let acc =
+      Option.fold pad_above ~init:acc ~f:(fun acc delta ->
+        Vcat
+          ( padding ~frills:t.ups ~height:delta
+          , acc
+          , { width; height = height acc + delta } ))
+    in
+    let acc =
+      Option.fold pad_below ~init:acc ~f:(fun acc delta ->
+        Vcat
+          ( acc
+          , padding ~frills:t.downs ~height:delta
+          , { width; height = height acc + delta } ))
+    in
+    acc
+  ;;
+
   let hcat ?(align = `Top) ts =
     if List.is_empty ts
     then cell nil
@@ -545,7 +635,7 @@ module Boxed = struct
         List.map ts ~f:(fun t ->
           let contents = t.contents in
           let padding = max_height - height contents in
-          let contents = vpad ~align contents padding in
+          let contents = vpad ~align t padding in
           let shift =
             let offset =
               match align with

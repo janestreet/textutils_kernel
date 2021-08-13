@@ -394,7 +394,7 @@ module Test_boxed = struct
       {|
     ┌───┬───┬──────────────┐
     │ A │ B │              │
-    ├───┴───┤   Top right  │
+    ├───┴───┤  Top right   │
     │   C   ├──────────────┤
     ├───┬───┤ Bottom right │
     │ D │ E │              │
@@ -532,5 +532,46 @@ module Test_boxed = struct
     │                               │           │   │   │
     └───────────────────────────────┴───────────┴───┴───┘
   |}]
+  ;;
+
+  let%expect_test "padding" =
+    vcat
+      [ hcat
+          (List.map [ `Left; `Center; `Right ] ~f:(fun align ->
+             boxed
+               Boxed.(
+                 vcat
+                   ~align
+                   [ cell (sexp [%sexp_of: [ `Left | `Right | `Center ]] align)
+                   ; vcat [ cell (text "A"); cell (text "B") ]
+                   ])))
+      ; hcat
+          (List.map [ `Top; `Center; `Bottom ] ~f:(fun align ->
+             boxed
+               Boxed.(
+                 hcat
+                   ~align
+                   [ cell
+                       ~vpadding:1
+                       (sexp [%sexp_of: [ `Top | `Bottom | `Center ]] align)
+                   ; hcat [ cell (text "A"); cell (text "B") ]
+                   ])))
+      ]
+    |> render
+    |> print_string;
+    [%expect
+      {|
+      ┌──────┐┌────────┐┌───────┐
+      │ Left ││ Center ││ Right │
+      ├──────┤├────────┤├───────┤
+      │ A    ││   A    ││     A │
+      ├──────┤├────────┤├───────┤
+      │ B    ││   B    ││     B │
+      └──────┘└────────┘└───────┘
+      ┌─────┬───┬───┐┌────────┬───┬───┐┌────────┬───┬───┐
+      │     │ A │ B ││        │   │   ││        │   │   │
+      │ Top │   │   ││ Center │ A │ B ││ Bottom │   │   │
+      │     │   │   ││        │   │   ││        │ A │ B │
+      └─────┴───┴───┘└────────┴───┴───┘└────────┴───┴───┘ |}]
   ;;
 end
