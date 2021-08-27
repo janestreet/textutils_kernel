@@ -62,9 +62,8 @@ let%test _ =
 ;;
 
 let render ?(narrow = false) labels_and_values =
-  if
-    List.is_empty labels_and_values
-    || List.exists ~f:(fun (_, x) -> x < 0.0) labels_and_values
+  if List.is_empty labels_and_values
+  || List.exists ~f:(fun (_, x) -> x < 0.0) labels_and_values
   then
     failwiths
       ~here:[%here]

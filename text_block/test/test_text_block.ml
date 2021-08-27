@@ -324,8 +324,7 @@ module Test_boxed = struct
 
   let%expect_test "Basics" =
     dump Boxed.(hcat [ cell a; cell b ]);
-    [%expect
-      {|
+    [%expect {|
     ┌───┬───┐
     │ A │ B │
     └───┴───┘
