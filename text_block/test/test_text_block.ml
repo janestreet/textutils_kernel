@@ -232,12 +232,12 @@ let%expect_test "word wrap" =
   |}];
   test
     ~width:33
-    "(Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor\n\
-    \ incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud\n\
-    \ exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute\n\
-    \ irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla\n\
-    \ pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui\n\
-    \ officia deserunt mollit anim id est laborum.)";
+    "(Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor \
+     incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud \
+     exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute \
+     irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla \
+     pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia \
+     deserunt mollit anim id est laborum.)";
   [%expect
     {|
     +---------------------------------+
@@ -257,6 +257,22 @@ let%expect_test "word wrap" =
     |officia deserunt mollit anim id  |
     |est laborum.)                    |
     +---------------------------------+
+  |}];
+  test
+    ~width:70
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor \
+     incididunt ut labore et dolore magna aliqua.\n\n\
+     Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip \
+     ex ea commodo consequat.";
+  [%expect
+    {|
+    +----------------------------------------------------------------------+
+    |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do       |
+    |eiusmod tempor incididunt ut labore et dolore magna aliqua.           |
+    |                                                                      |
+    |Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris    |
+    |nisi ut aliquip ex ea commodo consequat.                              |
+    +----------------------------------------------------------------------+
   |}]
 ;;
 

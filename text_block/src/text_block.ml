@@ -89,6 +89,7 @@ let dims t = { width = width t; height = height t }
 let halve n =
   let fst = n / 2 in
   let snd = fst + (n mod 2) in
+  (* fst + snd = n. snd = either fst or fst + 1 *)
   fst, snd
 ;;
 
@@ -188,20 +189,15 @@ let vcat ?(align = `Left) ?sep ts =
 ;;
 
 let text_of_lines lines ~align =
-  lines |> List.map ~f:(fun line -> Text line) |> vcat ~align
-;;
-
-let text_no_wrap ~align txt =
-  if Utf8_text.mem txt uchar_newline
-  then Utf8_text.split ~on:'\n' txt |> text_of_lines ~align
-  else Text txt
+  match lines with
+  | [ line ] -> Text line
+  | _ -> lines |> List.map ~f:(fun line -> Text line) |> vcat ~align
 ;;
 
 let utf8_space = Utf8_text.of_string " "
 
-let word_wrap txt ~max_width =
-  Utf8_text.split txt ~on:' '
-  |> List.concat_map ~f:(Utf8_text.split ~on:'\n')
+let word_wrap line ~max_width =
+  Utf8_text.split line ~on:' '
   |> List.filter ~f:(Fn.non Utf8_text.is_empty)
   |> List.fold ~init:(Fqueue.empty, Fqueue.empty, 0) ~f:(fun (lines, line, len) word ->
     let n = Utf8_text.width word in
@@ -216,9 +212,15 @@ let word_wrap txt ~max_width =
 
 let text ?(align = `Left) ?max_width str =
   let txt = Utf8_text.of_string str in
-  match max_width with
-  | None -> text_no_wrap ~align txt
-  | Some max_width -> word_wrap txt ~max_width |> text_of_lines ~align
+  let lines =
+    if Utf8_text.mem txt uchar_newline then Utf8_text.split ~on:'\n' txt else [ txt ]
+  in
+  let lines =
+    match max_width with
+    | None -> lines
+    | Some max_width -> List.concat_map lines ~f:(word_wrap ~max_width)
+  in
+  text_of_lines lines ~align
 ;;
 
 (* an abstract renderer, instantiated once to compute line lengths and then again to
@@ -325,6 +327,10 @@ let rec cons x = function
     if height x < height y then x :: y :: zs else cons (hcat ~align:`Bottom [ x; y ]) zs
 ;;
 
+let rows_of_cols cols ~sep_width =
+  cols |> List.transpose_exn |> List.map ~f:(fun row -> hcat row ~sep:(hstrut sep_width))
+;;
+
 let compress_table_header ?(sep_width = 2) (`Cols cols) =
   let cols =
     List.map cols ~f:(fun (header, data, align) ->
@@ -353,23 +359,13 @@ let compress_table_header ?(sep_width = 2) (`Cols cols) =
          in
          loop stairs (vcat ~align:`Left [ text "|"; hstrut (max_width + sep_width) ])))
   in
-  let rows =
-    List.map cols ~f:(fun (_, _, data) -> data)
-    |> List.transpose_exn
-    |> List.map ~f:(fun row -> hcat row ~sep:(hstrut sep_width))
-  in
+  let rows = List.map cols ~f:(fun (_, _, data) -> data) |> rows_of_cols ~sep_width in
   `Header header, `Rows rows
 ;;
 
 let table ?(sep_width = 2) (`Cols cols) =
-  let cols =
-    List.map cols ~f:(fun (data, align) -> Int.max 1 (max_width data), halign align data)
-  in
-  let rows =
-    List.map cols ~f:(fun (_, data) -> data)
-    |> List.transpose_exn
-    |> List.map ~f:(fun row -> hcat row ~sep:(hstrut sep_width))
-  in
+  let cols = List.map cols ~f:(fun (data, align) -> halign align data) in
+  let rows = rows_of_cols cols ~sep_width in
   `Rows rows
 ;;
 

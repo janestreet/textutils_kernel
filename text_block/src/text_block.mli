@@ -1,11 +1,11 @@
 open Core
 
-(** two dimensional blocks of text *)
+(** Two dimensional blocks of text *)
 type t [@@deriving sexp_of]
 
 include Invariant.S with type t := t
 
-(** the empty block. a left and right unit to both [hcat] and [vcat] *)
+(** The empty block. a left and right unit to both [hcat] and [vcat] *)
 val nil : t
 
 (** [fill] and [space] assume width and height are non-negative *)
@@ -16,7 +16,7 @@ val space : width:int -> height:int -> t
 (** Fill a space with a Unicode character *)
 val fill_uchar : Uchar.t -> width:int -> height:int -> t
 
-(** vertical and horizontal alignment specifications *)
+(** Vertical and horizontal alignment specifications *)
 type valign =
   [ `Top
   | `Bottom
@@ -29,27 +29,29 @@ type halign =
   | `Center
   ]
 
-(** a basic block of text, split on newlines and horizontally aligned as specified.
+(** A basic block of text, split on newlines and horizontally aligned as specified.
 
-    If [max_width] is provided, split on whitespace and wrap words to respect the request.
-    So long as no words are longer than [max_width], the resulting text block will be no
-    wider than [max_width]
+    If [max_width] is provided, split each line of the input on whitespace and wrap words
+    to respect the request.  So long as no words are longer than [max_width], the
+    resulting text block will be no wider than [max_width]
 *)
 val text : ?align:halign -> ?max_width:int -> string -> t
 
+(** Like [text], but takes a format string like printf *)
 val textf : ?align:halign -> ?max_width:int -> ('r, unit, string, t) format4 -> 'r
 
-(** vertical and horizontal concatenation with alignment *)
+(** Vertical concatenation with alignment *)
 val vcat : ?align:halign -> ?sep:t -> t list -> t
 
+(** Horizontal concatenation with alignment *)
 val hcat : ?align:valign -> ?sep:t -> t list -> t
 
-(** text block dimensions *)
-val width : t -> int
+(** Text block dimensions *)
 
+val width : t -> int
 val height : t -> int
 
-(** vertical and horizontal sequence alignment.  Both [valign] and [halign] return a list
+(** Vertical and horizontal sequence alignment.  Both [valign] and [halign] return a list
     of the same length as the input, with the corresponding elements padded to the
     appropriate alignment.
 
@@ -57,26 +59,28 @@ val height : t -> int
     [With_static_lengths.halign] below will let the type checker know that the length of
     the returned list is equal to the length of the input list.
 *)
-val valign : valign -> t list -> t list
 
+val valign : valign -> t list -> t list
 val halign : halign -> t list -> t list
 
-(** empty blocks with either horizontal or vertical extent -- useful for specifying a
+(** Empty blocks with either horizontal or vertical extent -- useful for specifying a
     minimum width or height in conjunction with valign or halign, respectively *)
-val hstrut : int -> t
 
+val hstrut : int -> t
 val vstrut : int -> t
 
-(** wrap a block with an ANSI escape sequence.
+(** Wrap a block with an ANSI escape sequence.
     The [prefix] and [suffix] arguments should render with zero width and height. *)
 val ansi_escape : ?prefix:string -> ?suffix:string -> t -> t
 
 (** render a block of text as a string *)
 val render : t -> string
 
+(** Alignment of a 2D grid of blocks *)
 val table : ?sep_width:int -> [ `Cols of (t list * halign) list ] -> [ `Rows of t list ]
 
-(** compress table header according to column widths.
+(** Compress table header according to column widths.
+
     Input:  a list of columns of the form (title, values, column alignment).
     Output: one header block and row sequence.
     Raises: if the [values] lists are not the same length in each column.
@@ -162,17 +166,15 @@ val indent : ?n:int -> t -> t
 (** [sexp sexp_of_a a = sexp_of_a a |> Sexp.to_string |> text] *)
 val sexp : ('a -> Sexp.t) -> 'a -> t
 
-(** Provide versions of halign and valign with the invariant about list length encoded
-    into the types.
+(** Versions of halign and valign with the invariant about list length encoded into the
+    types.
 
     You can write, for example:
-
     {[
 
       let [x; y] = Text_block.With_static_lengths.valign [x; y] in
       ...
     ]}
-
 *)
 module With_static_lengths : sig
   module List : sig
