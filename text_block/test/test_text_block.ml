@@ -330,7 +330,7 @@ let%expect_test "fill_uchar" =
     😀😀 |}]
 ;;
 
-module Test_boxed = struct
+module _ = struct
   let dump x = boxed x |> render |> print_string
   let a = text "A"
   let b = text "B"
