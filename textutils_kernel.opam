@@ -11,10 +11,10 @@ build: [
 ]
 depends: [
   "ocaml" {>= "4.08.0"}
-  "core_kernel"
+  "core"
   "ppx_jane"
-  "dune"        {>= "2.0.0"}
-  "uutf"        {>= "1.0.2"}
+  "dune"     {>= "2.0.0"}
+  "uutf"     {>= "1.0.2"}
 ]
 synopsis: "Text output utilities"
 description: "
