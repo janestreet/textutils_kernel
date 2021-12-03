@@ -1,2 +1,2 @@
 (library (name text_block) (public_name textutils_kernel.text_block)
- (libraries core_kernel.core utf8_text uutf) (preprocess (pps ppx_jane)))
+ (libraries core utf8_text uutf) (preprocess (pps ppx_jane)))
