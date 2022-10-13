@@ -345,7 +345,7 @@ let compress_table_header ?(sep_width = 2) (`Cols cols) =
            match stairs with
            | [] -> stop ()
            | x :: rest ->
-             if width header + sep_width <= width acc
+             if width header + Int.max 1 sep_width <= width acc
              then stop ()
              else
                loop
@@ -405,6 +405,63 @@ let box_char ?up ?down ?left ?right () =
   | false, false, false, true -> Uchar.of_scalar_exn 0x2576
   | false, true, false, false -> Uchar.of_scalar_exn 0x2577
   | false, false, false, false -> Uchar.of_char ' '
+;;
+
+module Up_or_down = struct
+  type t =
+    | Up
+    | Down
+  [@@deriving sexp_of]
+end
+
+let span_banner
+      ~extend_left
+      ~extend_right
+      ~length
+      ~points:(up_or_down : Up_or_down.t)
+      ?label
+      ()
+  =
+  let up, down =
+    match up_or_down with
+    | Up -> Some (), None
+    | Down -> None, Some ()
+  in
+  let label_line =
+    match label with
+    | None -> nil
+    | Some label -> hcat [ hstrut 1; label ]
+  in
+  (* [label_pointer] is the character in the span that points to the label.
+     It points in the opposite direction of the span_banner. *)
+  let label_pointer =
+    let up, down =
+      match up_or_down with
+      | Up -> None, Some ()
+      | Down -> Some (), None
+    in
+    box_char ~right:() ~left:() ?up ?down ()
+  in
+  vcat
+    [ (match up_or_down with
+        | Down -> label_line
+        | Up -> nil)
+    ; hcat
+        (List.init length ~f:(fun i ->
+           fill_uchar
+             ~height:1
+             ~width:1
+             (if i = 0 && not extend_left
+              then box_char ~right:() ?down ?up ()
+              else if i = 1 && Option.is_some label
+              then label_pointer
+              else if i = length - 1 && not extend_right
+              then box_char ~left:() ?down ?up ()
+              else box_char ~right:() ~left:() ())))
+    ; (match up_or_down with
+       | Up -> label_line
+       | Down -> nil)
+    ]
 ;;
 
 module Boxed = struct

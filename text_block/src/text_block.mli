@@ -152,6 +152,56 @@ end
 (** See comment for [Boxed] *)
 val boxed : Boxed.t -> t
 
+module Up_or_down : sig
+  type t =
+    | Up
+    | Down
+  [@@deriving sexp_of]
+end
+
+(** [span_banner] produces text blocks that indicate the extent of something else
+    {v
+        extend_left
+        |      extend_right
+        |      |      points
+        |      |      |     span_banner ...
+        |      |      |     |           span_banner ~label ...
+        |      |      |     |           |
+
+        true   true   Up    ──────────  ─┬────────
+                                         label
+
+        true   false  Up    ─────────┘  ─┬───────┘
+                                         label
+
+        false  true   Up    └─────────  └┬────────
+                                         label
+
+        false  false  Up    └────────┘  └┬───────┘
+                                         label
+
+        true   true   Down               label
+                            ──────────  ─┴────────
+
+        true   false  Down               label
+                            ─────────┐  ─┴───────┐
+
+        false  true   Down               label
+                            ┌─────────  ┌┴────────
+
+        false  false  Down               label
+                            ┌────────┐  ┌┴───────┐ |}];
+   v}
+*)
+val span_banner
+  :  extend_left:bool
+  -> extend_right:bool
+  -> length:int
+  -> points:Up_or_down.t
+  -> ?label:t
+  -> unit
+  -> t
+
 (* convenience definitions *)
 
 (** [vsep = vstrut 1] *)

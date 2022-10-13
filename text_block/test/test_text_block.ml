@@ -276,6 +276,65 @@ let%expect_test "word wrap" =
   |}]
 ;;
 
+let%expect_test "compress_table_header" =
+  let test cols =
+    let `Header header, `Rows rows = compress_table_header (`Cols cols) in
+    test (vcat (header :: rows))
+  in
+  test
+    [ text "abcdefg", [ text "1"; text "23"; text "456" ], `Right
+    ; text "hijk", [ text "123"; text "4567"; text "89" ], `Left
+    ; text "lmnop", [ text "12345"; text "678"; text "9" ], `Center
+    ];
+  [%expect
+    {|
+    abcdefg
+    |    hijk  lmnop
+    |    |     |
+      1  123   12345
+     23  4567   678
+    456  89      9 |}]
+;;
+
+(* Here's a trick for labeling an x-axis in an ascii graph by calling
+   [compress_table_header] on columns whose only "data" is a single [hstrut] indicating
+   how spaced out you'd like your x-axis labels to be.  Note that one must pass
+   ~sep_width:0 to compress_table_header to get this effect. *)
+let%expect_test "number markers" =
+  let label_width_pairs =
+    [ 100, 4
+    ; 251, 2
+    ; 398, 2
+    ; 631, 2
+    ; 1, 3
+    ; 2, 4
+    ; 5, 3
+    ; 10, 3
+    ; 20, 3
+    ; 40, 2
+    ; 63, 2
+    ; 100, 4
+    ; 251, 2
+    ; 398, 3
+    ; 794, 1
+    ]
+  in
+  let cols =
+    List.map label_width_pairs ~f:(fun (label, width) ->
+      sexp [%sexp_of: int] label, [ hstrut width ], `Left)
+  in
+  let `Header text, _ = compress_table_header ~sep_width:0 (`Cols cols) in
+  test text;
+  [%expect
+    {|
+        251
+        | 398                 40      251
+        | | 631               | 63    | 398
+    100 | | | 1  2   5  10 20 | | 100 | |  794
+    |   | | | |  |   |  |  |  | | |   | |  | |}];
+  ()
+;;
+
 (* lines with trailing whitespace used to tickle a bug *)
 
 let%expect_test _ =
@@ -330,6 +389,7 @@ let%expect_test "fill_uchar" =
     😀😀 |}]
 ;;
 
+(* [Test_boxed] tests *)
 module _ = struct
   let dump x = boxed x |> render |> print_string
   let a = text "A"
@@ -590,3 +650,80 @@ module _ = struct
       └─────┴───┴───┘└────────┴───┴───┘└────────┴───┴───┘ |}]
   ;;
 end
+
+let%expect_test "span_banner" =
+  let rows =
+    let open List.Let_syntax in
+    let%bind points = Up_or_down.[ Up; Down ] in
+    let%bind extend_left = [ false; true ] in
+    let%bind extend_right = [ false; true ] in
+    [ extend_left, extend_right, points ]
+  in
+  let length = 10 in
+  let label = text "label" in
+  let `Header header, `Rows rows =
+    compress_table_header
+      (`Cols
+         [ ( text "extend_left"
+           , List.map rows ~f:(fun (extend_left, _, _) ->
+               sexp [%sexp_of: bool] extend_left)
+           , `Left )
+         ; ( text "extend_right"
+           , List.map rows ~f:(fun (_, extend_right, _) ->
+               sexp [%sexp_of: bool] extend_right)
+           , `Left )
+         ; ( text "points"
+           , List.map rows ~f:(fun (_, _, points) -> sexp [%sexp_of: Up_or_down.t] points)
+           , `Left )
+         ; ( text "span_banner"
+           , List.map rows ~f:(fun (extend_left, extend_right, points) ->
+               let align =
+                 match points with
+                 | Up -> `Top
+                 | Down -> `Bottom
+               in
+               hcat
+                 ~align
+                 [ vstrut 2; span_banner ~extend_left ~extend_right ~points ~length () ])
+           , `Left )
+         ; ( text "span_banner ~label"
+           , List.map rows ~f:(fun (extend_left, extend_right, points) ->
+               span_banner ~extend_left ~extend_right ~points ~length ~label ())
+           , `Left )
+         ])
+  in
+  test (vcat ~sep:vsep (header :: rows));
+  [%expect
+    {|
+    extend_left
+    |      extend_right
+    |      |      points
+    |      |      |     span_banner
+    |      |      |     |           span_banner ~label
+    |      |      |     |           |
+
+    false  false  Up    └────────┘  └┬───────┘
+                                     label
+
+    false  true   Up    └─────────  └┬────────
+                                     label
+
+    true   false  Up    ─────────┘  ─┬───────┘
+                                     label
+
+    true   true   Up    ──────────  ─┬────────
+                                     label
+
+    false  false  Down               label
+                        ┌────────┐  ┌┴───────┐
+
+    false  true   Down               label
+                        ┌─────────  ┌┴────────
+
+    true   false  Down               label
+                        ─────────┐  ─┴───────┐
+
+    true   true   Down               label
+                        ──────────  ─┴──────── |}];
+  ()
+;;
