@@ -286,7 +286,7 @@ let line_lengths t =
 ;;
 
 let poke_uchar : bytes -> Uchar.t -> pos:int -> unit =
-  let buffer = Caml.Buffer.create 4 in
+  let buffer = Stdlib.Buffer.create 4 in
   fun bytes c ~pos ->
     Uutf.Buffer.add_utf_8 buffer c;
     for k = 0 to Buffer.length buffer - 1 do

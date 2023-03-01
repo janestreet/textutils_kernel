@@ -104,7 +104,10 @@ let chunks_of t ~width ~prefer_split_on_spaces =
     let chunk_ends_before_pos = chunks |> List.map ~f:List.last_exn |> Sequence.of_list in
     chunk_ends_before_pos
     |> Sequence.unfold_with ~init:0 ~f:(fun start_at end_before ->
-      Yield (String.sub t ~pos:start_at ~len:(end_before - start_at), end_before))
+      Yield
+        { value = String.sub t ~pos:start_at ~len:(end_before - start_at)
+        ; state = end_before
+        })
     |> Sequence.to_list
 ;;
 
