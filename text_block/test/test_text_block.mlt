@@ -6,7 +6,7 @@ open Text_block
 
 let () =
   let [ x; y ] = With_static_lengths.halign `Left [ nil; nil; nil ] in
-  ignore (x, y : Text_block.t * Text_block.t)
+  ignore ((x, y) : Text_block.t * Text_block.t)
 ;;
 
 [%%expect
@@ -21,7 +21,7 @@ Error: This pattern matches values of type
 
 let () =
   let [ x; y; z ] = With_static_lengths.halign `Left [ nil; nil ] in
-  ignore (x, y, z : Text_block.t * Text_block.t * Text_block.t)
+  ignore ((x, y, z) : Text_block.t * Text_block.t * Text_block.t)
 ;;
 
 [%%expect
