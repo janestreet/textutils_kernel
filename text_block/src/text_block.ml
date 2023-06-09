@@ -747,14 +747,14 @@ module List_with_static_lengths = struct
 
   let rec of_same_length_list_exn : type a shape. (a, shape) t -> a list -> (a, shape) t =
     fun t list ->
-      match t with
-      | [] ->
-        if not (List.is_empty list) then failwith "list is too long";
-        []
-      | _ :: t_tl ->
-        (match list with
-         | [] -> failwith "list is too short"
-         | list_hd :: list_tl -> list_hd :: of_same_length_list_exn t_tl list_tl)
+    match t with
+    | [] ->
+      if not (List.is_empty list) then failwith "list is too long";
+      []
+    | _ :: t_tl ->
+      (match list with
+       | [] -> failwith "list is too short"
+       | list_hd :: list_tl -> list_hd :: of_same_length_list_exn t_tl list_tl)
   ;;
 end
 
