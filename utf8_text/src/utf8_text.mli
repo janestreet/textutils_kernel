@@ -14,6 +14,14 @@ include Invariant.S with type t := t
 include Container.S0 with type t := t with type elt := Uchar.t
 include Stringable.S with type t := t
 
+module Stable : sig
+  module V1 : sig
+    type nonrec t = t [@@deriving bin_io, compare, sexp]
+
+    include Stringable.S with type t := t
+  end
+end
+
 (** [width t] approximates the displayed width of [t].
 
     We incorrectly assume that every code point has the same width. This is better than

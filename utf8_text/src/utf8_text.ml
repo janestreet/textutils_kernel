@@ -1,22 +1,57 @@
 open! Core
 
-type t = string [@@deriving compare, sexp_of]
+module Stable = struct
+  module V1 = struct
+    type t = string [@@deriving compare, sexp_of]
 
-let fold_with_start_pos t ~init ~f =
-  let require_uchar pos = function
-    | `Malformed s -> raise_s [%message "Not UTF-8" ~_:(s : string) (pos : int)]
-    | `Uchar uchar -> uchar
-  in
-  Uutf.String.fold_utf_8
-    (fun init pos x -> f init pos (require_uchar pos x))
-    init
-    t [@nontail]
-;;
+    let fold_with_start_pos t ~init ~f =
+      let require_uchar pos = function
+        | `Malformed s -> raise_s [%message "Not UTF-8" ~_:(s : string) (pos : int)]
+        | `Uchar uchar -> uchar
+      in
+      Uutf.String.fold_utf_8
+        (fun init pos x -> f init pos (require_uchar pos x))
+        init
+        t [@nontail]
+    ;;
 
-let invariant t =
-  Invariant.invariant [%here] t [%sexp_of: t] (fun () ->
-    fold_with_start_pos t ~init:() ~f:(fun () (_ : int) (_ : Uchar.t) -> ()))
-;;
+    let invariant t =
+      Invariant.invariant [%here] t [%sexp_of: t] (fun () ->
+        fold_with_start_pos t ~init:() ~f:(fun () (_ : int) (_ : Uchar.t) -> ()))
+    ;;
+
+    let of_string t =
+      invariant t;
+      t
+    ;;
+
+    let to_string = String.to_string
+    let t_of_sexp s = string_of_sexp s |> of_string
+
+    include
+      Binable.Of_binable_with_uuid
+        (struct
+          type t = String.Stable.V1.t [@@deriving bin_io]
+        end)
+        (struct
+          type nonrec t = t
+
+          let of_binable = of_string
+          let to_binable = to_string
+
+          let caller_identity =
+            Bin_prot.Shape.Uuid.of_string "5bc29e13-1c6f-4b6d-b431-3befb256ebda"
+          ;;
+        end)
+
+    let%expect_test "" =
+      print_endline [%bin_digest: t];
+      [%expect {| 0fae4a3589e35c8bf51b9052f31761d0 |}]
+    ;;
+  end
+end
+
+include Stable.V1
 
 include Container.Make0 (struct
     type nonrec t = t
@@ -34,19 +69,12 @@ include Container.Make0 (struct
 let concat ?sep ts = String.concat ts ?sep
 let is_empty = String.is_empty
 
-let of_string t =
-  invariant t;
-  t
-;;
-
 let split str ~on =
   match on with
   | '\000' .. '\127' -> String.split str ~on
   | '\128' .. '\255' ->
     raise_s [%sexp "Utf8_text.split: can't split on a non-ascii char", (on : char)]
 ;;
-
-let to_string = String.to_string
 
 
 let assumed_width_per_uchar = 1
