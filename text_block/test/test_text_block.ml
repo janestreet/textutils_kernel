@@ -664,33 +664,33 @@ let%expect_test "span_banner" =
   let `Header header, `Rows rows =
     compress_table_header
       (`Cols
-         [ ( text "extend_left"
-           , List.map rows ~f:(fun (extend_left, _, _) ->
-               sexp [%sexp_of: bool] extend_left)
-           , `Left )
-         ; ( text "extend_right"
-           , List.map rows ~f:(fun (_, extend_right, _) ->
-               sexp [%sexp_of: bool] extend_right)
-           , `Left )
-         ; ( text "points"
-           , List.map rows ~f:(fun (_, _, points) -> sexp [%sexp_of: Up_or_down.t] points)
-           , `Left )
-         ; ( text "span_banner"
-           , List.map rows ~f:(fun (extend_left, extend_right, points) ->
-               let align =
-                 match points with
-                 | Up -> `Top
-                 | Down -> `Bottom
-               in
-               hcat
-                 ~align
-                 [ vstrut 2; span_banner ~extend_left ~extend_right ~points ~length () ])
-           , `Left )
-         ; ( text "span_banner ~label"
-           , List.map rows ~f:(fun (extend_left, extend_right, points) ->
-               span_banner ~extend_left ~extend_right ~points ~length ~label ())
-           , `Left )
-         ])
+        [ ( text "extend_left"
+          , List.map rows ~f:(fun (extend_left, _, _) ->
+              sexp [%sexp_of: bool] extend_left)
+          , `Left )
+        ; ( text "extend_right"
+          , List.map rows ~f:(fun (_, extend_right, _) ->
+              sexp [%sexp_of: bool] extend_right)
+          , `Left )
+        ; ( text "points"
+          , List.map rows ~f:(fun (_, _, points) -> sexp [%sexp_of: Up_or_down.t] points)
+          , `Left )
+        ; ( text "span_banner"
+          , List.map rows ~f:(fun (extend_left, extend_right, points) ->
+              let align =
+                match points with
+                | Up -> `Top
+                | Down -> `Bottom
+              in
+              hcat
+                ~align
+                [ vstrut 2; span_banner ~extend_left ~extend_right ~points ~length () ])
+          , `Left )
+        ; ( text "span_banner ~label"
+          , List.map rows ~f:(fun (extend_left, extend_right, points) ->
+              span_banner ~extend_left ~extend_right ~points ~length ~label ())
+          , `Left )
+        ])
   in
   test (vcat ~sep:vsep (header :: rows));
   [%expect

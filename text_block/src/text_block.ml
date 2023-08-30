@@ -200,11 +200,11 @@ let word_wrap line ~max_width =
   Utf8_text.split line ~on:' '
   |> List.filter ~f:(Fn.non Utf8_text.is_empty)
   |> List.fold ~init:(Fqueue.empty, Fqueue.empty, 0) ~f:(fun (lines, line, len) word ->
-    let n = Utf8_text.width word in
-    let n' = len + 1 + n in
-    if n' > max_width
-    then Fqueue.enqueue lines line, Fqueue.singleton word, n
-    else lines, Fqueue.enqueue line word, n')
+       let n = Utf8_text.width word in
+       let n' = len + 1 + n in
+       if n' > max_width
+       then Fqueue.enqueue lines line, Fqueue.singleton word, n
+       else lines, Fqueue.enqueue line word, n')
   |> (fun (lines, line, _) -> Fqueue.enqueue lines line)
   |> Fqueue.map ~f:(fun line -> Fqueue.to_list line |> Utf8_text.concat ~sep:utf8_space)
   |> Fqueue.to_list
@@ -415,12 +415,12 @@ module Up_or_down = struct
 end
 
 let span_banner
-      ~extend_left
-      ~extend_right
-      ~length
-      ~points:(up_or_down : Up_or_down.t)
-      ?label
-      ()
+  ~extend_left
+  ~extend_right
+  ~length
+  ~points:(up_or_down : Up_or_down.t)
+  ?label
+  ()
   =
   let up, down =
     match up_or_down with
@@ -444,8 +444,8 @@ let span_banner
   in
   vcat
     [ (match up_or_down with
-        | Down -> label_line
-        | Up -> nil)
+       | Down -> label_line
+       | Up -> nil)
     ; hcat
         (List.init length ~f:(fun i ->
            fill_uchar
@@ -549,17 +549,17 @@ module Boxed = struct
   let concat_frills project width_or_height ~ts ~n =
     List.init ((2 * n) - 1) ~f:Fn.id
     |> List.fold ~init:(0, []) ~f:(fun (sum, vals) i ->
-      let sum, new_vals =
-        if i % 2 = 0
-        then (
-          let t = ts.(i / 2) in
-          let vals = List.map (project t) ~f:(fun j -> j + sum) in
-          sum + width_or_height t.contents, vals)
-        else (
-          let vals = [ sum ] in
-          sum + 1, vals)
-      in
-      sum, List.rev_append new_vals vals)
+         let sum, new_vals =
+           if i % 2 = 0
+           then (
+             let t = ts.(i / 2) in
+             let vals = List.map (project t) ~f:(fun j -> j + sum) in
+             sum + width_or_height t.contents, vals)
+           else (
+             let vals = [ sum ] in
+             sum + 1, vals)
+         in
+         sum, List.rev_append new_vals vals)
     |> snd
     |> List.rev
   ;;
