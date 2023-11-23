@@ -235,7 +235,7 @@ let render_abstract t ~write_direct ~line_length =
   let next_i = Array.init (height t) ~f:(fun _ -> 0) in
   let add_char c j =
     let i = next_i.(j) in
-    let num_bytes = Uchar.utf8_byte_length c in
+    let num_bytes = Uchar.utf_8_byte_length c in
     next_i.(j) <- i + num_bytes;
     write_direct c i j ~num_bytes
   in
