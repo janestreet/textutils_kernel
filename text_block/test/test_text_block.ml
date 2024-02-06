@@ -727,3 +727,9 @@ let%expect_test "span_banner" =
                         ──────────  ─┴──────── |}];
   ()
 ;;
+
+let%expect_test "Regression test against stack overflows" =
+  let textblock = Text_block.vcat (List.init 1_000_000 ~f:(Fn.const (text ""))) in
+  Expect_test_helpers_core.require_does_not_raise [%here] (fun () ->
+    Text_block.render textblock |> (ignore : string -> unit))
+;;

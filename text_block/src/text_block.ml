@@ -235,26 +235,36 @@ let render_abstract t ~write_direct ~line_length =
   let next_i = Array.init (height t) ~f:(fun _ -> 0) in
   let add_char c j =
     let i = next_i.(j) in
-    let num_bytes = Uchar.utf_8_byte_length c in
+    let num_bytes = Uchar.Utf8.byte_length c in
     next_i.(j) <- i + num_bytes;
     write_direct c i j ~num_bytes
   in
   let write_string txt j = Utf8_text.iter txt ~f:(fun uchar -> add_char uchar j) in
-  let rec aux t j_offset =
+  let rec aux : type r. t -> int -> (unit -> r) -> r =
+    fun t j_offset k ->
+    (* This function is written in continuation passing style to avoid stack overflows
+       on really big textblocks. https://en.wikipedia.org/wiki/Continuation-passing_style.
+
+       We are explicit about [aux] being polymorphic in the return type of the
+       continuation (r) to ensure that the only way it can ultimately return is via its
+       continuation.
+    *)
     match t with
-    | Text s -> write_string s j_offset
+    | Text s ->
+      write_string s j_offset;
+      k ()
     | Fill (ch, d) ->
       for _i = 0 to d.width - 1 do
         for j = 0 to d.height - 1 do
           add_char ch (j + j_offset)
         done
-      done
+      done;
+      k ()
     | Vcat (t1, t2, _) ->
-      aux t1 j_offset;
-      aux t2 (j_offset + height t1)
+      (aux [@tailcall]) t1 j_offset (fun () ->
+        (aux [@tailcall]) t2 (j_offset + height t1) k)
     | Hcat (t1, t2, _) ->
-      aux t1 j_offset;
-      aux t2 j_offset
+      (aux [@tailcall]) t1 j_offset (fun () -> (aux [@tailcall]) t2 j_offset k)
     | Ansi (prefix, t, suffix, _) ->
       let vcopy s =
         Option.iter s ~f:(fun s ->
@@ -263,10 +273,11 @@ let render_abstract t ~write_direct ~line_length =
           done)
       in
       vcopy (Option.map ~f:Utf8_text.of_string prefix);
-      aux t j_offset;
-      vcopy (Option.map ~f:Utf8_text.of_string suffix)
+      (aux [@tailcall]) t j_offset (fun () ->
+        vcopy (Option.map ~f:Utf8_text.of_string suffix);
+        k ())
   in
-  aux t 0
+  aux t 0 (fun () -> ())
 ;;
 
 let line_lengths t =
