@@ -32,18 +32,6 @@ val width : t -> int
 (** [bytes t] is the number of bytes in the UTF-8 encoding of [t]. *)
 val bytes : t -> int
 
-(** [chunks_of t ~width] splits [t] into chunks no wider than [width] characters s.t. {[
-
-      t = t |> chunks_of ~width |> concat
-
-    ]}.  [chunks_of] always returns at least one chunk, which may be empty.
-
-    If [prefer_split_on_spaces = true] and such a space exists, [t] will be split on the
-    last U+020 SPACE before the chunk becomes too wide. Otherwise, the split happens
-    exactly at [width] characters.
-*)
-val chunks_of : t -> width:int -> prefer_split_on_spaces:bool -> t list
-
 val of_uchar_list : Uchar.t list -> t
 val concat : ?sep:t -> t list -> t
 
