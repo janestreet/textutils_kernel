@@ -1,6 +1,8 @@
 open Core
 
-(** Two dimensional blocks of text *)
+(** Two-dimensional blocks of UTF-8 text. This module makes a naive assumption that each
+    Unicode scalar value has a display width of 1. If this is not the case, the width
+    calculations will be incorrect. See [String.Utf8.length_in_uchars] for details. *)
 type t [@@deriving sexp_of]
 
 include Invariant.S with type t := t
@@ -13,7 +15,7 @@ val fill : char -> width:int -> height:int -> t
 
 val space : width:int -> height:int -> t
 
-(** Fill a space with a Unicode character *)
+(** Fill a space with a Unicode scalar value *)
 val fill_uchar : Uchar.t -> width:int -> height:int -> t
 
 (** Vertical and horizontal alignment specifications *)
@@ -29,12 +31,11 @@ type halign =
   | `Center
   ]
 
-(** A basic block of text, split on newlines and horizontally aligned as specified.
+(** A basic block of UTF-8 text, split on newlines and horizontally aligned as specified.
 
     If [max_width] is provided, split each line of the input on whitespace and wrap words
-    to respect the request.  So long as no words are longer than [max_width], the
-    resulting text block will be no wider than [max_width]
-*)
+    to respect the request. So long as no words are longer than [max_width], the resulting
+    text block will be no wider than [max_width]. *)
 val text : ?align:halign -> ?max_width:int -> string -> t
 
 (** Like [text], but takes a format string like printf *)
@@ -51,14 +52,13 @@ val hcat : ?align:valign -> ?sep:t -> t list -> t
 val width : t -> int
 val height : t -> int
 
-(** Vertical and horizontal sequence alignment.  Both [valign] and [halign] return a list
+(** Vertical and horizontal sequence alignment. Both [valign] and [halign] return a list
     of the same length as the input, with the corresponding elements padded to the
     appropriate alignment.
 
     If you have a list of a statically known length, using [With_static_lengths.valign] or
     [With_static_lengths.halign] below will let the type checker know that the length of
-    the returned list is equal to the length of the input list.
-*)
+    the returned list is equal to the length of the input list. *)
 
 val valign : valign -> t list -> t list
 val halign : halign -> t list -> t list
@@ -210,7 +210,7 @@ val vsep : t
 (** [hsep = hstrut 1] *)
 val hsep : t
 
-(** [indent ~n t = hcat [hstrut n; t]].  [n] defaults to [2] *)
+(** [indent ~n t = hcat [hstrut n; t]]. [n] defaults to [2] *)
 val indent : ?n:int -> t -> t
 
 (** [sexp sexp_of_a a = sexp_of_a a |> Sexp.to_string |> text] *)

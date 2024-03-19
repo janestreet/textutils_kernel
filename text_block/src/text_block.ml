@@ -28,7 +28,7 @@ type halign =
 [@@deriving sexp_of]
 
 type t =
-  | Text of Utf8_text.t
+  | Text of String.Utf8.t
   | Fill of Uchar.t * dims
   | Hcat of t * t * dims
   | Vcat of t * t * dims
@@ -41,7 +41,7 @@ let height = function
 ;;
 
 let width = function
-  | Text s -> Utf8_text.width s
+  | Text s -> String.Utf8.length_in_uchars s
   | Fill (_, d) | Hcat (_, _, d) | Vcat (_, _, d) | Ansi (_, _, _, d) -> d.width
 ;;
 
@@ -49,7 +49,7 @@ let uchar_newline = Uchar.of_char '\n'
 
 let rec invariant t =
   match t with
-  | Text s -> assert (not (Utf8_text.mem s uchar_newline))
+  | Text s -> assert (not (String.Utf8.mem s uchar_newline))
   | Fill (_, dims) -> dims_invariant dims
   | Hcat (t1, t2, dims) ->
     dims_invariant dims;
@@ -194,26 +194,29 @@ let text_of_lines lines ~align =
   | _ -> lines |> List.map ~f:(fun line -> Text line) |> vcat ~align
 ;;
 
-let utf8_space = Utf8_text.of_string " "
+let utf8_space = String.Utf8.of_string " "
 
 let word_wrap line ~max_width =
-  Utf8_text.split line ~on:' '
-  |> List.filter ~f:(Fn.non Utf8_text.is_empty)
+  String.Utf8.split line ~on:(Uchar.of_char ' ')
+  |> List.filter ~f:(Fn.non String.Utf8.is_empty)
   |> List.fold ~init:(Fqueue.empty, Fqueue.empty, 0) ~f:(fun (lines, line, len) word ->
-       let n = Utf8_text.width word in
+       let n = String.Utf8.length_in_uchars word in
        let n' = len + 1 + n in
        if n' > max_width
        then Fqueue.enqueue lines line, Fqueue.singleton word, n
        else lines, Fqueue.enqueue line word, n')
   |> (fun (lines, line, _) -> Fqueue.enqueue lines line)
-  |> Fqueue.map ~f:(fun line -> Fqueue.to_list line |> Utf8_text.concat ~sep:utf8_space)
+  |> Fqueue.map ~f:(fun line ->
+       Fqueue.to_list line |> List.intersperse ~sep:utf8_space |> String.Utf8.concat)
   |> Fqueue.to_list
 ;;
 
 let text ?(align = `Left) ?max_width str =
-  let txt = Utf8_text.of_string str in
+  let txt = String.Utf8.of_string str in
   let lines =
-    if Utf8_text.mem txt uchar_newline then Utf8_text.split ~on:'\n' txt else [ txt ]
+    if String.Utf8.mem txt uchar_newline
+    then String.Utf8.split ~on:(Uchar.of_char '\n') txt
+    else [ txt ]
   in
   let lines =
     match max_width with
@@ -239,7 +242,7 @@ let render_abstract t ~write_direct ~line_length =
     next_i.(j) <- i + num_bytes;
     write_direct c i j ~num_bytes
   in
-  let write_string txt j = Utf8_text.iter txt ~f:(fun uchar -> add_char uchar j) in
+  let write_string txt j = String.Utf8.iter txt ~f:(fun uchar -> add_char uchar j) in
   let rec aux : type r. t -> int -> (unit -> r) -> r =
     fun t j_offset k ->
     (* This function is written in continuation passing style to avoid stack overflows
@@ -272,9 +275,9 @@ let render_abstract t ~write_direct ~line_length =
             write_string s (j + j_offset)
           done)
       in
-      vcopy (Option.map ~f:Utf8_text.of_string prefix);
+      vcopy (Option.map ~f:String.Utf8.of_string prefix);
       (aux [@tailcall]) t j_offset (fun () ->
-        vcopy (Option.map ~f:Utf8_text.of_string suffix);
+        vcopy (Option.map ~f:String.Utf8.of_string suffix);
         k ())
   in
   aux t 0 (fun () -> ())

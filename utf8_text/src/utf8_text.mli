@@ -1,12 +1,13 @@
-(** [Text] is text encoded in UTF-8.
-
-    Under the hood, this is just a [String.t], but the type is abstract so that the
-    compiler will remind us not to use [String.length] when we mean [Text.width].
-*)
+(** This library is deprecated; use [Core.String.Utf8] instead. *)
 
 open! Core
 
-type t [@@deriving compare, quickcheck, sexp_of]
+[@@@alert "-deprecated"]
+
+(** Text encoded in UTF-8. *)
+type t
+[@@deriving compare, quickcheck, sexp_of]
+[@@deprecated "[since 2023-12] Use [String.Utf8.t] instead."]
 
 (** The invariant is that [t] is a sequence of well-formed UTF-8 code points. *)
 include Invariant.S with type t := t
@@ -16,20 +17,23 @@ include Stringable.S with type t := t
 
 module Stable : sig
   module V1 : sig
-    type nonrec t = t [@@deriving bin_io, compare, sexp]
+    type nonrec t = t
+    [@@deriving bin_io, compare, sexp]
+    [@@deprecated
+      "[since 2023-12] Use [Core.Core_stable.String.Utf8.V1.t] instead. The type has the \
+       same serialization and bin shape so no version bump is required."]
 
     include Stringable.S with type t := t
   end
 end
 
-(** [width t] approximates the displayed width of [t].
-
-    We incorrectly assume that every code point has the same width. This is better than
-    [String.length] for many code points, but doesn't work for double-width characters or
-    combining diacritics. *)
+(** [width t] approximates the display width of [t]. If you are migrating to
+    [String.Utf8], use [String.Utf8.length_in_uchars], but see its documentation for why
+    this is not a good way to compute display width. *)
 val width : t -> int
 
-(** [bytes t] is the number of bytes in the UTF-8 encoding of [t]. *)
+(** [bytes t] is the number of bytes in the UTF-8 encoding of [t]. If you are migrating to
+    [String.Utf8], use [String.length (t :> string)]. *)
 val bytes : t -> int
 
 val of_uchar_list : Uchar.t list -> t
