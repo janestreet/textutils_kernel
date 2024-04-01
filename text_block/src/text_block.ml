@@ -243,44 +243,53 @@ let render_abstract t ~write_direct ~line_length =
     write_direct c i j ~num_bytes
   in
   let write_string txt j = String.Utf8.iter txt ~f:(fun uchar -> add_char uchar j) in
-  let rec aux : type r. t -> int -> (unit -> r) -> r =
-    fun t j_offset k ->
-    (* This function is written in continuation passing style to avoid stack overflows
-       on really big textblocks. https://en.wikipedia.org/wiki/Continuation-passing_style.
-
-       We are explicit about [aux] being polymorphic in the return type of the
-       continuation (r) to ensure that the only way it can ultimately return is via its
-       continuation.
-    *)
-    match t with
-    | Text s ->
-      write_string s j_offset;
-      k ()
-    | Fill (ch, d) ->
-      for _i = 0 to d.width - 1 do
-        for j = 0 to d.height - 1 do
-          add_char ch (j + j_offset)
-        done
-      done;
-      k ()
-    | Vcat (t1, t2, _) ->
-      (aux [@tailcall]) t1 j_offset (fun () ->
-        (aux [@tailcall]) t2 (j_offset + height t1) k)
-    | Hcat (t1, t2, _) ->
-      (aux [@tailcall]) t1 j_offset (fun () -> (aux [@tailcall]) t2 j_offset k)
-    | Ansi (prefix, t, suffix, _) ->
-      let vcopy s =
-        Option.iter s ~f:(fun s ->
-          for j = 0 to height t - 1 do
-            write_string s (j + j_offset)
-          done)
-      in
-      vcopy (Option.map ~f:String.Utf8.of_string prefix);
-      (aux [@tailcall]) t j_offset (fun () ->
-        vcopy (Option.map ~f:String.Utf8.of_string suffix);
-        k ())
+  (* [aux] is written in continuation passing style to avoid stack overflows
+     on really big textblocks. https://en.wikipedia.org/wiki/Continuation-passing_style.
+     Typically continuation-passing style uses function closures as the continuation, but
+     here we defunctionalize the closure to get around js_of_ocaml's inability to do 
+     tail-call optimization in general. *)
+  let module K = struct
+    type k =
+      | Done
+      | Job of t * int * k
+      | Suffix of t * int * string * k
+  end
   in
-  aux t 0 (fun () -> ())
+  let vcopy t j_offset s =
+    let s = String.Utf8.of_string s in
+    for j = 0 to height t - 1 do
+      write_string s (j + j_offset)
+    done
+  in
+  let rec aux = function
+    | K.Done -> ()
+    | Job (t, j_offset, k) ->
+      (match t with
+       | Text s ->
+         write_string s j_offset;
+         aux k
+       | Fill (ch, d) ->
+         for _i = 0 to d.width - 1 do
+           for j = 0 to d.height - 1 do
+             add_char ch (j + j_offset)
+           done
+         done;
+         aux k
+       | Vcat (t1, t2, _) -> aux (Job (t1, j_offset, Job (t2, j_offset + height t1, k)))
+       | Hcat (t1, t2, _) -> aux (Job (t1, j_offset, Job (t2, j_offset, k)))
+       | Ansi (prefix, t, suffix, _) ->
+         Option.iter ~f:(vcopy t j_offset) prefix;
+         let k =
+           match suffix with
+           | Some suffix -> K.Suffix (t, j_offset, suffix, k)
+           | None -> k
+         in
+         aux (Job (t, j_offset, k)))
+    | Suffix (t, j_offset, suffix, k) ->
+      vcopy t j_offset suffix;
+      aux k
+  in
+  aux (Job (t, 0, Done))
 ;;
 
 let line_lengths t =
