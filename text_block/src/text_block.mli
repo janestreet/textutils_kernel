@@ -31,15 +31,23 @@ type halign =
   | `Center
   ]
 
+(** Word wrapping behavior for [text] and friends. *)
+type wrap_behavior =
+  { max_width : int
+  (** ensure that the resulting text block is no wider than either [max_width] or the
+      longest word, whichever is longer. *)
+  ; preserve_leading_spaces : bool (** whether to preserve leading spaces on each line *)
+  }
+
 (** A basic block of UTF-8 text, split on newlines and horizontally aligned as specified.
 
-    If [max_width] is provided, split each line of the input on whitespace and wrap words
-    to respect the request. So long as no words are longer than [max_width], the resulting
-    text block will be no wider than [max_width]. *)
-val text : ?align:halign -> ?max_width:int -> string -> t
+    Word wrapping is done iff [wrap] is passed. See comment on [wrap_behavior] for more
+    details.
+*)
+val text : ?align:halign -> ?wrap:wrap_behavior -> string -> t
 
 (** Like [text], but takes a format string like printf *)
-val textf : ?align:halign -> ?max_width:int -> ('r, unit, string, t) format4 -> 'r
+val textf : ?align:halign -> ?wrap:wrap_behavior -> ('r, unit, string, t) format4 -> 'r
 
 (** Vertical concatenation with alignment *)
 val vcat : ?align:halign -> ?sep:t -> t list -> t

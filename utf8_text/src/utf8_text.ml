@@ -54,17 +54,17 @@ end
 include Stable.V1
 
 include Container.Make0 (struct
-  type nonrec t = t
+    type nonrec t = t
 
-  module Elt = Uchar
+    module Elt = Uchar
 
-  let fold t ~init ~f =
-    fold_with_start_pos t ~init ~f:(fun init _pos uchar -> f init uchar) [@nontail]
-  ;;
+    let fold t ~init ~f =
+      fold_with_start_pos t ~init ~f:(fun init _pos uchar -> f init uchar) [@nontail]
+    ;;
 
-  let iter = `Define_using_fold
-  let length = `Define_using_fold
-end)
+    let iter = `Define_using_fold
+    let length = `Define_using_fold
+  end)
 
 let concat ?sep ts = String.concat ts ?sep
 let is_empty = String.is_empty
@@ -117,5 +117,5 @@ let iteri t ~f =
     (fold t ~init:0 ~f:(fun i uchar ->
        f i uchar;
        i + 1)
-      : int)
+     : int)
 ;;

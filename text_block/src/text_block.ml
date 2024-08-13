@@ -27,6 +27,12 @@ type halign =
   ]
 [@@deriving sexp_of]
 
+type wrap_behavior =
+  { max_width : int
+  ; preserve_leading_spaces : bool
+  }
+[@@deriving sexp_of]
+
 type t =
   | Text of String.Utf8.t
   | Fill of Uchar.t * dims
@@ -196,22 +202,34 @@ let text_of_lines lines ~align =
 
 let utf8_space = String.Utf8.of_string " "
 
-let word_wrap line ~max_width =
+let word_wrap line ~max_width ~preserve_leading_spaces =
+  let maybe_filter_out_leading_spaces s =
+    match preserve_leading_spaces with
+    | false -> List.filter s ~f:(Fn.non String.Utf8.is_empty)
+    | true ->
+      (* we don't want to filter out spaces until we've seen a non-empty character...
+         after the first non-empty character, we'll switch to filtering out spaces *)
+      let leading_spaces, rest = List.split_while s ~f:String.Utf8.is_empty in
+      leading_spaces @ List.filter rest ~f:(Fn.non String.Utf8.is_empty)
+  in
   String.Utf8.split line ~on:(Uchar.of_char ' ')
-  |> List.filter ~f:(Fn.non String.Utf8.is_empty)
+  |> maybe_filter_out_leading_spaces
   |> List.fold ~init:(Fqueue.empty, Fqueue.empty, 0) ~f:(fun (lines, line, len) word ->
-       let n = String.Utf8.length_in_uchars word in
-       let n' = len + 1 + n in
-       if n' > max_width
-       then Fqueue.enqueue lines line, Fqueue.singleton word, n
-       else lines, Fqueue.enqueue line word, n')
+    let n = String.Utf8.length_in_uchars word in
+    let n' = len + 1 + n in
+    if n' > max_width
+    then
+      if len = 0
+      then Fqueue.enqueue lines (Fqueue.singleton word), line, 0
+      else Fqueue.enqueue lines line, Fqueue.singleton word, n
+    else lines, Fqueue.enqueue line word, n')
   |> (fun (lines, line, _) -> Fqueue.enqueue lines line)
   |> Fqueue.map ~f:(fun line ->
-       Fqueue.to_list line |> List.intersperse ~sep:utf8_space |> String.Utf8.concat)
+    Fqueue.to_list line |> List.intersperse ~sep:utf8_space |> String.Utf8.concat)
   |> Fqueue.to_list
 ;;
 
-let text ?(align = `Left) ?max_width str =
+let text ?(align = `Left) ?wrap str =
   let txt = String.Utf8.of_string str in
   let lines =
     if String.Utf8.mem txt uchar_newline
@@ -219,9 +237,10 @@ let text ?(align = `Left) ?max_width str =
     else [ txt ]
   in
   let lines =
-    match max_width with
+    match wrap with
     | None -> lines
-    | Some max_width -> List.concat_map lines ~f:(word_wrap ~max_width)
+    | Some { max_width; preserve_leading_spaces } ->
+      List.concat_map lines ~f:(word_wrap ~max_width ~preserve_leading_spaces)
   in
   text_of_lines lines ~align
 ;;
@@ -246,7 +265,7 @@ let render_abstract t ~write_direct ~line_length =
   (* [aux] is written in continuation passing style to avoid stack overflows
      on really big textblocks. https://en.wikipedia.org/wiki/Continuation-passing_style.
      Typically continuation-passing style uses function closures as the continuation, but
-     here we defunctionalize the closure to get around js_of_ocaml's inability to do 
+     here we defunctionalize the closure to get around js_of_ocaml's inability to do
      tail-call optimization in general. *)
   let module K = struct
     type k =
@@ -572,17 +591,17 @@ module Boxed = struct
   let concat_frills project width_or_height ~ts ~n =
     List.init ((2 * n) - 1) ~f:Fn.id
     |> List.fold ~init:(0, []) ~f:(fun (sum, vals) i ->
-         let sum, new_vals =
-           if i % 2 = 0
-           then (
-             let t = ts.(i / 2) in
-             let vals = List.map (project t) ~f:(fun j -> j + sum) in
-             sum + width_or_height t.contents, vals)
-           else (
-             let vals = [ sum ] in
-             sum + 1, vals)
-         in
-         sum, List.rev_append new_vals vals)
+      let sum, new_vals =
+        if i % 2 = 0
+        then (
+          let t = ts.(i / 2) in
+          let vals = List.map (project t) ~f:(fun j -> j + sum) in
+          sum + width_or_height t.contents, vals)
+        else (
+          let vals = [ sum ] in
+          sum + 1, vals)
+      in
+      sum, List.rev_append new_vals vals)
     |> snd
     |> List.rev
   ;;
@@ -756,7 +775,7 @@ let vsep = vstrut 1
 let hsep = hstrut 1
 let indent ?(n = 2) t = hcat [ hstrut n; t ]
 let sexp sexp_of_a a = sexp_of_a a |> Sexp.to_string_hum |> text
-let textf ?align ?max_width fmt = ksprintf (text ?align ?max_width) fmt
+let textf ?align ?wrap fmt = ksprintf (text ?align ?wrap) fmt
 
 module List_with_static_lengths = struct
   type ('a, 'shape) t =
