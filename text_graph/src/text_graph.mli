@@ -13,10 +13,8 @@ open! Core
       label7       71 |-
       label8       32 |
      (each '-' is approximately 37.860 units.)
-    v}
+    v} *)
 
-*)
-
-(** Renders a text graph given labels and values.  The list should be non-empty and the
+(** Renders a text graph given labels and values. The list should be non-empty and the
     specified values must be positive numbers. Setting narrow enables narrower graphs. *)
 val render : ?narrow:bool -> (string * float) list -> string

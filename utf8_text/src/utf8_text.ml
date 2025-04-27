@@ -16,7 +16,7 @@ module Stable = struct
     ;;
 
     let invariant t =
-      Invariant.invariant [%here] t [%sexp_of: t] (fun () ->
+      Invariant.invariant t [%sexp_of: t] (fun () ->
         fold_with_start_pos t ~init:() ~f:(fun () (_ : int) (_ : Uchar.t) -> ()))
     ;;
 
