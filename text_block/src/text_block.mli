@@ -42,8 +42,7 @@ type wrap_behavior =
 (** A basic block of UTF-8 text, split on newlines and horizontally aligned as specified.
 
     Word wrapping is done iff [wrap] is passed. See comment on [wrap_behavior] for more
-    details.
-*)
+    details. *)
 val text : ?align:halign -> ?wrap:wrap_behavior -> string -> t
 
 (** Like [text], but takes a format string like printf *)
@@ -77,8 +76,8 @@ val halign : halign -> t list -> t list
 val hstrut : int -> t
 val vstrut : int -> t
 
-(** Wrap a block with an ANSI escape sequence.
-    The [prefix] and [suffix] arguments should render with zero width and height. *)
+(** Wrap a block with an ANSI escape sequence. The [prefix] and [suffix] arguments should
+    render with zero width and height. *)
 val ansi_escape : ?prefix:string -> ?suffix:string -> t -> t
 
 (** render a block of text as a string *)
@@ -89,10 +88,9 @@ val table : ?sep_width:int -> [ `Cols of (t list * halign) list ] -> [ `Rows of 
 
 (** Compress table header according to column widths.
 
-    Input:  a list of columns of the form (title, values, column alignment).
-    Output: one header block and row sequence.
-    Raises: if the [values] lists are not the same length in each column.
-    Example:
+    Input: a list of columns of the form (title, values, column alignment). Output: one
+    header block and row sequence. Raises: if the [values] lists are not the same length
+    in each column. Example:
 
     {v
                                                  first name
@@ -107,7 +105,8 @@ val compress_table_header
   -> [ `Cols of (t * t list * halign) list ]
   -> [ `Header of t ] * [ `Rows of t list ]
 
-(** Combinators for building up cell structures separated by box characters: e.g.
+(** {v
+ Combinators for building up cell structures separated by box characters: e.g.
 
     {[
       let a = text "A" in
@@ -138,16 +137,14 @@ val compress_table_header
     └───┴───┘       └───┴───┴───┘
 
     respectively.
-*)
+    v} *)
 module Boxed : sig
   type outer_t := t
   type t [@@deriving sexp_of]
 
   (** An outlined table cell, possibly with extra space (padding) on the sides.
 
-      [hpadding] defaults to 1.
-      [vpadding] defaults to 0.
-  *)
+      [hpadding] defaults to 1. [vpadding] defaults to 0. *)
   val cell : ?hpadding:int -> ?vpadding:int -> outer_t -> t
 
   (** Vertical concatenation with inserts horizontal separator lines. *)
@@ -199,8 +196,7 @@ end
 
         false  false  Down               label
                             ┌────────┐  ┌┴───────┐ |}];
-   v}
-*)
+    v} *)
 val span_banner
   :  extend_left:bool
   -> extend_right:bool
@@ -229,11 +225,9 @@ val sexp : ('a -> Sexp.t) -> 'a -> t
 
     You can write, for example:
     {[
-
       let [x; y] = Text_block.With_static_lengths.valign [x; y] in
       ...
-    ]}
-*)
+    ]} *)
 module With_static_lengths : sig
   module List : sig
     type ('a, 'shape) t =

@@ -66,7 +66,6 @@ let render ?(narrow = false) labels_and_values =
      || List.exists ~f:(fun (_, x) -> x < 0.0) labels_and_values
   then
     failwiths
-      ~here:[%here]
       "Text_graph.render: Labels and values should be non-empty and values must be \
        positive"
       labels_and_values
