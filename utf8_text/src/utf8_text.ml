@@ -62,6 +62,9 @@ include Container.Make0 (struct
       fold_with_start_pos t ~init ~f:(fun init _pos uchar -> f init uchar) [@nontail]
     ;;
 
+    let fold_until t ~init ~f ~finish = Container.fold_until ~fold t ~init ~f ~finish
+    let fold = `Custom fold
+    let iter_until = `Define_using_fold_until
     let iter = `Define_using_fold
     let length = `Define_using_fold
   end)
