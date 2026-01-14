@@ -248,7 +248,7 @@ let text ?(align = `Left) ?wrap str =
 (* an abstract renderer, instantiated once to compute line lengths and then again to
    actually produce a string.
 
-   [line_length] is a number of bytes rather than a number of visible characters.  The two
+   [line_length] is a number of bytes rather than a number of visible characters. The two
    may differ in case of proper unicode [Text] or [Ansi] escape sequences. *)
 let render_abstract t ~write_direct ~line_length =
   for j = 0 to height t - 1 do
@@ -262,11 +262,11 @@ let render_abstract t ~write_direct ~line_length =
     write_direct c i j ~num_bytes
   in
   let write_string txt j = String.Utf8.iter txt ~f:(fun uchar -> add_char uchar j) in
-  (* [aux] is written in continuation passing style to avoid stack overflows
-     on really big textblocks. https://en.wikipedia.org/wiki/Continuation-passing_style.
-     Typically continuation-passing style uses function closures as the continuation, but
-     here we defunctionalize the closure to get around js_of_ocaml's inability to do
-     tail-call optimization in general. *)
+  (* [aux] is written in continuation passing style to avoid stack overflows on really big
+     textblocks. https://en.wikipedia.org/wiki/Continuation-passing_style. Typically
+     continuation-passing style uses function closures as the continuation, but here we
+     defunctionalize the closure to get around js_of_ocaml's inability to do tail-call
+     optimization in general. *)
   let module K = struct
     type k =
       | Done
@@ -411,7 +411,7 @@ let table ?(sep_width = 2) (`Cols cols) =
   `Rows rows
 ;;
 
-(* Produces one of a family of unicode characters that look like
+(*=Produces one of a family of unicode characters that look like
 
    ,--U--.
    |  U  |     with U filled in if [up] is passed,
@@ -474,8 +474,8 @@ let span_banner
     | None -> nil
     | Some label -> hcat [ hstrut 1; label ]
   in
-  (* [label_pointer] is the character in the span that points to the label.
-     It points in the opposite direction of the span_banner. *)
+  (* [label_pointer] is the character in the span that points to the label. It points in
+     the opposite direction of the span_banner. *)
   let label_pointer =
     let up, down =
       match up_or_down with
@@ -508,7 +508,7 @@ let span_banner
 
 module Boxed = struct
   (* The representation of a boxed text block is a generalization of [box_char] where
-     there may be more than one place where it "pokes out" on each side.  The four
+     there may be more than one place where it "pokes out" on each side. The four
      directional int lists give all such positions.
 
      It isn't until we call [wrap] at the very end that the final border goes around the

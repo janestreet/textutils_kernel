@@ -300,7 +300,7 @@ let%expect_test "compress_table_header" =
 
 (* Here's a trick for labeling an x-axis in an ascii graph by calling
    [compress_table_header] on columns whose only "data" is a single [hstrut] indicating
-   how spaced out you'd like your x-axis labels to be.  Note that one must pass
+   how spaced out you'd like your x-axis labels to be. Note that one must pass
    ~sep_width:0 to compress_table_header to get this effect. *)
 let%expect_test "number markers" =
   let label_width_pairs =
