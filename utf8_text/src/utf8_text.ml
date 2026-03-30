@@ -2,7 +2,7 @@ open! Core
 
 module Stable = struct
   module V1 = struct
-    type t = string [@@deriving compare, sexp_of]
+    type t = string [@@deriving compare ~localize, sexp_of]
 
     let fold_with_start_pos t ~init ~f =
       let require_uchar pos = function

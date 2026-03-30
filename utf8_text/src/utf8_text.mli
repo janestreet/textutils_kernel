@@ -6,7 +6,7 @@ open! Core
 
 (** Text encoded in UTF-8. *)
 type t
-[@@deriving compare, quickcheck, sexp_of]
+[@@deriving compare ~localize, quickcheck, sexp_of]
 [@@deprecated "[since 2023-12] Use [String.Utf8.t] instead."]
 
 (** The invariant is that [t] is a sequence of well-formed UTF-8 code points. *)
@@ -18,7 +18,7 @@ include Stringable.S with type t := t
 module Stable : sig
   module V1 : sig
     type nonrec t = t
-    [@@deriving bin_io, compare, sexp]
+    [@@deriving bin_io, compare ~localize, sexp]
     [@@deprecated
       "[since 2023-12] Use [Core.Core_stable.String.Utf8.V1.t] instead. The type has the \
        same serialization and bin shape so no version bump is required."]
