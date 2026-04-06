@@ -3,4 +3,4 @@
  (public_name textutils_kernel.utf8_text)
  (libraries core uutf)
  (preprocess
-  (pps ppx_jane)))
+  (pps ppx_jane -compare-require-explicit-locality)))
